@@ -9,8 +9,6 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       'lucide-react',
       '@supabase/supabase-js',
-      'jspdf',
-      'jspdf-autotable',
       'recharts',
     ],
   },
