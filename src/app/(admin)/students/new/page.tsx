@@ -31,7 +31,6 @@ export const StudentRegistration: React.FC = () => {
   });
   
   const [profileImage, _setProfileImage] = useState<File | null>(null);
-
   const [status, setStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
   const { fieldErrors, setGlobalError, clearErrors } = useFormErrors();
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +41,10 @@ export const StudentRegistration: React.FC = () => {
   
   const [useTransport, setUseTransport] = useState(false);
   const [useAcademy, setUseAcademy] = useState(false);
+
+  // ── Sibling Detection ────────────────────────────────────────────────
+  const [siblings, setSiblings] = useState<any[]>([]);
+  const [siblingsLoading, setSiblingsLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -71,6 +74,39 @@ export const StudentRegistration: React.FC = () => {
       }
     })();
   }, []);
+
+  // ── Detect siblings when guardian_email or guardian_whatsapp changes ──
+  useEffect(() => {
+    const email = formData.guardian_email.trim();
+    const wa = formData.guardian_whatsapp.trim();
+    if (!email && !wa) {
+      setSiblings([]);
+      return;
+    }
+    const timeout = setTimeout(async () => {
+      try {
+        setSiblingsLoading(true);
+        const dbClient = adminSupabase || supabase;
+        let query = dbClient.from('students').select('id, name, academic_class, section, father_name').neq('status', 'Ex-Students');
+        
+        if (email && wa) {
+          query = query.or(`guardian_email.eq.${email},guardian_whatsapp.eq.${wa}`);
+        } else if (email) {
+          query = query.eq('guardian_email', email);
+        } else {
+          query = query.eq('guardian_whatsapp', wa);
+        }
+
+        const { data } = await query;
+        setSiblings(data || []);
+      } catch {
+        setSiblings([]);
+      } finally {
+        setSiblingsLoading(false);
+      }
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [formData.guardian_email, formData.guardian_whatsapp]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (fieldErrors[e.target.name]) {
@@ -157,33 +193,32 @@ export const StudentRegistration: React.FC = () => {
         registration_fee_status: formData.registration_fee_status,
         advance_fee_months: formData.advance_fee_months,
         admission_date: formData.admission_date,
+        guardian_email: formData.guardian_email,
         guardian_whatsapp: formData.guardian_whatsapp,
         guardian_password: formData.guardian_whatsapp,
         profile_image_url: profileImageUrl,
       };
 
-      if (adminSupabase && formData.guardian_email && formData.guardian_whatsapp) {
-        const email = formData.guardian_email;
-        const password = formData.guardian_whatsapp;
-        
-        const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
-          email: email,
-          password: password,
-          email_confirm: true,
-          user_metadata: { role: 'Guardian', name: formData.father_name, username: email }
-        });
-        
-        if (authError && !authError.message.includes('already exists') && !authError.message.includes('already')) {
-          throw authError;
-        }
-
-        // Retrieve the ID to link it (if it already existed, we fetch it)
-        if (authData?.user) {
-          insertPayload.guardian_id = authData.user.id;
-        } else if (authError?.message.includes('already')) {
-          const { data: existingUser } = await adminSupabase.auth.admin.listUsers();
-          const found = existingUser?.users.find(u => u.email === email);
-          if (found) insertPayload.guardian_id = found.id;
+      // ── Create Supabase Auth user via server API route ──────────────
+      if (formData.guardian_email && formData.guardian_whatsapp) {
+        try {
+          const res = await fetch('/api/admin/create-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: formData.guardian_email,
+              password: formData.guardian_whatsapp,
+              role: 'Guardian',
+              name: formData.father_name,
+            }),
+          });
+          const result = await res.json();
+          if (result?.user?.id) {
+            insertPayload.guardian_id = result.user.id;
+          }
+          // If graceful: true or alreadyExists: true, we continue without blocking
+        } catch {
+          // Network error — continue without auth user
         }
       }
 
@@ -192,7 +227,7 @@ export const StudentRegistration: React.FC = () => {
       if (error) throw error;
       
       setStatus({ type: 'success', message: 'Student registered successfully!' });
-      setTimeout(() => router.push('/students/records'), 1500);
+      setTimeout(() => router.push('/students'), 1500);
     } catch (err: any) {
       const mapped = setGlobalError(err.message || 'An error occurred');
       if (mapped['general']) {
@@ -235,6 +270,47 @@ export const StudentRegistration: React.FC = () => {
           <Input label="Guardian's Email (Required for login)" name="guardian_email" type="email" value={formData.guardian_email} onChange={handleChange} required placeholder="guardian@example.com" error={fieldErrors['guardian_email']} />
           <Input label="Guardian's WhatsApp" name="guardian_whatsapp" type="text" value={formData.guardian_whatsapp} onChange={handleChange} required placeholder="03xx-xxxxxxx" error={fieldErrors['guardian_whatsapp']} />
         </div>
+
+        {/* ── Sibling Detection Panel ───────────────────────────── */}
+        {(siblings.length > 0 || siblingsLoading) && (
+          <div style={{
+            marginTop: '16px',
+            padding: '14px 16px',
+            borderRadius: '10px',
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.35)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '16px' }}>👨‍👩‍👧</span>
+              <strong style={{ fontSize: '14px', color: 'var(--color-warning)' }}>
+                {siblingsLoading ? 'Checking for siblings...' : `Possible Sibling(s) Detected (${siblings.length})`}
+              </strong>
+            </div>
+            {!siblingsLoading && siblings.map(s => (
+              <div key={s.id} style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '8px 10px', borderRadius: '8px',
+                background: 'var(--color-surface)', marginBottom: '6px',
+                fontSize: '13px', color: 'var(--color-text-main)'
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'var(--color-primary)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 700, fontSize: '13px', flexShrink: 0,
+                }}>
+                  {s.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{s.name}</div>
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: '12px' }}>
+                    {s.academic_class} — {s.section} &bull; Father: {s.father_name}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <hr className="divider" />
         
@@ -310,7 +386,7 @@ export const StudentRegistration: React.FC = () => {
         </div>
 
         <div className="form-actions">
-          <button type="button" className="btn-secondary" onClick={() => router.push('/students/records')}>Cancel</button>
+          <button type="button" className="btn-secondary" onClick={() => router.push('/students')}>Cancel</button>
           <button type="submit" className="btn-primary" disabled={isLoading}>
             {isLoading ? 'Saving...' : 'Register Student'}
           </button>

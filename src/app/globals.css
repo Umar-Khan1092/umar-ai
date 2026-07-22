@@ -63,8 +63,11 @@
   --color-text-heading: #F8FAFC;
   --color-text-main: #CBD5E1;
   --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
   --color-border: #334155;
   --color-input-border: #475569;
+  --color-selected-row: #1E293B;
+  --color-primary: #3B82F6;
   --shadow-premium: 0 6px 20px rgba(0,0,0,0.4);
 }
 

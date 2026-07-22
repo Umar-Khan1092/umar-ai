@@ -902,7 +902,7 @@ export const FeeManagement: React.FC = () => {
                     <div 
                       key={`${group.className}-${group.section}`} 
                       className="class-card"
-                      onClick={() => router.push(`/students/fees/view/${encodeURIComponent(group.className)}/${encodeURIComponent(group.section)}`)}
+                      onClick={() => setSelectedClassGroup({ className: group.className, section: group.section })}
                     >
                       <div className="card-header">
                         <div className="icon-wrapper">

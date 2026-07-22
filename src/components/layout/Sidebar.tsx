@@ -24,7 +24,7 @@ interface SidebarProps {
 const adminNavItems: NavItem[] = [
   { name: 'Dashboard',          icon: Home,          path: '/dashboard',     color: '#2563EB' },
   { name: 'Student Management', icon: Users,          path: '/students',      color: '#7C3AED' },
-  { name: 'Fee Management',     icon: CreditCard,    path: '/students/fees', color: '#059669' },
+  { name: 'Fee Management',     icon: CreditCard,    path: '/fees', color: '#059669' },
   { name: 'Staff',              icon: Briefcase,     path: '/staff',         color: '#F59E0B' },
   { name: 'Academics',          icon: GraduationCap, path: '/academics',     color: '#0891B2' },
   { name: 'Attendance',         icon: Calendar,      path: '/attendance',    color: '#16A34A' },
@@ -112,10 +112,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, items =
             const iconColor = item.color || '#94A3B8';
             
             // Highlight tabs if we are anywhere inside them
-            const isActive = (item.path === '/students' && pathname.startsWith('/students') && !pathname.startsWith('/students/fees')) ||
-                             (item.path === '/students/fees' && pathname.startsWith('/students/fees')) ||
+            const isActive = (item.path === '/students' && pathname.startsWith('/students')) ||
+                             (item.path === '/fees' && pathname.startsWith('/fees')) ||
                              (item.path === '/staff' && pathname.startsWith('/staff')) ||
-                             (item.path === '/academics' && pathname.startsWith('/academics')) ||
+                             (item.path === '/academics' && (pathname.startsWith('/academics') || pathname.startsWith('/exams') || pathname.startsWith('/results'))) ||
                              (item.path === '/attendance' && pathname.startsWith('/attendance')) ||
                              pathname === item.path;
 

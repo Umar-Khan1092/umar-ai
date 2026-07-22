@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, MoreVertical, Edit, Download, Eye, UploadCloud } from 'lucide-react';
+import { Search, Filter, Trash2, Edit, Download, Eye, UploadCloud } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase, adminSupabase } from '@/lib/supabase';
@@ -228,23 +228,13 @@ export const StaffRecords: React.FC = () => {
                       
                       <div className="menu-container">
                         <button 
-                          className="icon-btn more-btn" 
-                          title="More Options"
-                          onClick={() => setActiveMenuId(activeMenuId === staff.id ? null : staff.id)}
+                          className="icon-btn" 
+                          title="Struck Off"
+                          onClick={() => handleStruckOff(staff.id, staff.name)}
+                          style={{ color: 'var(--color-danger)' }}
                         >
-                          <MoreVertical size={16} />
+                          <Trash2 size={16} />
                         </button>
-                        
-                        {activeMenuId === staff.id && (
-                          <div className="dropdown-menu">
-                            <button 
-                              className="dropdown-item danger"
-                              onClick={() => handleStruckOff(staff.id, staff.name)}
-                            >
-                              Struck Off
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </td>
