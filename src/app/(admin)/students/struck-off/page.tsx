@@ -24,7 +24,7 @@ export const StruckOffStudents: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    supabase.from('students').select('*').eq('status', 'Struck Off').then(res => {
+    supabase.from('students').select('*').in('status', ['Ex-Students', 'Struck Off']).then(res => {
       if (res.data) {
         setStudents(res.data);
         setFilteredStudents(res.data);

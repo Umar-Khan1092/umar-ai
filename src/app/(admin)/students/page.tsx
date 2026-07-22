@@ -228,20 +228,6 @@ export const StudentRecords: React.FC = () => {
                 Global Student Search
               </h2>
             </div>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="kpi-badge">
-                <span className="kpi-label">Total Active Students</span>
-                <span className="kpi-value">{metrics.activeCount}</span>
-              </div>
-              <div className="kpi-badge" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>
-                <span className="kpi-label">New Admissions</span>
-                <span className="kpi-value">{metrics.newAdmissionsCount}</span>
-              </div>
-              <div className="kpi-badge" style={{ backgroundColor: '#fee2e2', color: '#991b1b' }}>
-                <span className="kpi-label">Ex-Students</span>
-                <span className="kpi-value">{metrics.exStudentsCount}</span>
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -263,25 +249,7 @@ export const StudentRecords: React.FC = () => {
             <UploadCloud size={16} /> Import CSV
           </button>
           
-          <div className="filter-group">
-            <span style={{ fontSize: '12px', color: '#64748b' }}>From:</span>
-            <input 
-              type="date" 
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="filter-select"
-            />
-          </div>
 
-          <div className="filter-group">
-            <span style={{ fontSize: '12px', color: '#64748b' }}>To:</span>
-            <input 
-              type="date" 
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="filter-select"
-            />
-          </div>
 
           {!className && (
             <div className="filter-group">

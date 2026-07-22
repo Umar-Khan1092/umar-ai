@@ -12,6 +12,7 @@ export const AdminStaffAttendance: React.FC = () => {
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [notifyStaff, setNotifyStaff] = useState(true);
 
   useEffect(() => {
     fetchAttendance();
@@ -65,6 +66,24 @@ export const AdminStaffAttendance: React.FC = () => {
         .upsert(upsertPayload, { onConflict: 'staff_id, date' });
 
       if (error) throw error;
+      
+      // Notify staff if requested
+      if (notifyStaff) {
+        const title = "Attendance Marked";
+        const message = `Your attendance for ${date} has been marked.`;
+        
+        // We do it asynchronously in the background so it doesn't block
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            message,
+            category: 'Attendance',
+            targetType: 'Staff',
+          })
+        }).catch(err => console.error("Failed to send staff notification:", err));
+      }
       
       setStatusMsg({ type: 'success', message: finalize ? 'Attendance finalized successfully!' : 'Attendance saved successfully!' });
       if (finalize) setIsFinalized(true);
@@ -193,10 +212,21 @@ export const AdminStaffAttendance: React.FC = () => {
               <AlertTriangle size={24} />
               <h2 style={{ margin: 0, fontSize: '18px' }}>Finalize Attendance?</h2>
             </div>
-            <p style={{ marginBottom: '24px', color: '#475569', lineHeight: 1.5 }}>
+            <p style={{ marginBottom: '16px', color: '#475569', lineHeight: 1.5 }}>
               Are you sure you want to finalize the attendance for {date}? 
               <strong> You will not be able to edit it once finalized.</strong>
             </p>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#334155' }}>
+                <input 
+                  type="checkbox" 
+                  checked={notifyStaff} 
+                  onChange={(e) => setNotifyStaff(e.target.checked)} 
+                  style={{ width: '16px', height: '16px', accentColor: '#059669' }}
+                />
+                Send push notification to all staff
+              </label>
+            </div>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button className="btn-secondary" onClick={() => setShowConfirm(false)}>Cancel</button>
               <button className="btn-primary" style={{ backgroundColor: '#059669', borderColor: '#059669' }} onClick={() => handleSave(true)}>
