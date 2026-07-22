@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminSupabase } from '@/lib/supabase';
 import webpush from 'web-push';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 
 // Configure Web Push with VAPID keys
 if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -17,12 +15,14 @@ export async function POST(req: Request) {
   try {
     const { userIds, roles, title, message, url, category } = await req.json();
 
-    // Basic Authentication/Authorization check
-    const cookieStore = cookies();
-    const supabaseClient = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    
-    if (!session?.user) {
+    // Basic Authorization check via JWT header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !adminSupabase) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await adminSupabase.auth.getUser(token);
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

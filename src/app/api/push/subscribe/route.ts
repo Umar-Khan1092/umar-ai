@@ -1,23 +1,28 @@
 import { NextResponse } from 'next/server';
 import { adminSupabase } from '@/lib/supabase';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
     const subscription = await req.json();
     
-    // Get the authenticated user
-    const cookieStore = cookies();
-    const supabaseClient = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Validate required fields from the push subscription object
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+      return NextResponse.json({ error: 'Invalid subscription object' }, { status: 400 });
     }
     
-    const userId = session.user.id;
-    const role = session.user.user_metadata?.role || 'User';
+    // Get user info from the Authorization header (the client will send the Supabase JWT)
+    const authHeader = req.headers.get('Authorization');
+    let userId: string | null = null;
+    let role: string = 'User';
+    
+    if (authHeader && adminSupabase) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await adminSupabase.auth.getUser(token);
+      if (user) {
+        userId = user.id;
+        role = user.user_metadata?.role || 'User';
+      }
+    }
 
     // Verify adminSupabase is available
     if (!adminSupabase) {

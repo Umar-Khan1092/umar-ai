@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, Send, Users, User, Megaphone, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Bell, Send } from 'lucide-react';
 import { supabase, adminSupabase } from '@/lib/supabase';
 
 const CATEGORIES = [
@@ -111,9 +111,15 @@ export const NotificationsPage: React.FC = () => {
       }
       // broadcast: no userIds or roles
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
+
       const res = await fetch('/api/push/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
       const result = await res.json();

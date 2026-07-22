@@ -1,4 +1,6 @@
 // src/lib/push.ts
+import { supabase } from './supabase';
+
 export const urlB64ToUint8Array = (base64String: string) => {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -31,13 +33,20 @@ export const subscribeToPush = async (vapidPublicKey: string) => {
 };
 
 export const saveSubscriptionToServer = async (subscription: PushSubscription) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
   const res = await fetch('/api/push/subscribe', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
     body: JSON.stringify(subscription),
   });
   if (!res.ok) {
-    throw new Error('Failed to save subscription to server');
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to save subscription to server');
   }
   return res.json();
 };
