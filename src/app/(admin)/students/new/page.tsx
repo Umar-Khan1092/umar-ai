@@ -89,16 +89,18 @@ export const StudentRegistration: React.FC = () => {
         const dbClient = adminSupabase || supabase;
         let query = dbClient.from('students').select('id, name, academic_class, section, father_name').neq('status', 'Ex-Students');
         
-        if (email && wa) {
-          query = query.or(`guardian_email.eq.${email},guardian_whatsapp.eq.${wa}`);
-        } else if (email) {
-          query = query.eq('guardian_email', email);
-        } else {
+        if (wa) {
           query = query.eq('guardian_whatsapp', wa);
+        } else {
+          setSiblings([]);
+          setSiblingsLoading(false);
+          return;
         }
 
         const { data } = await query;
-        setSiblings(data || []);
+        if (!siblingsDismissed) {
+          setSiblings(data || []);
+        }
       } catch {
         setSiblings([]);
       } finally {
@@ -107,6 +109,8 @@ export const StudentRegistration: React.FC = () => {
     }, 500);
     return () => clearTimeout(timeout);
   }, [formData.guardian_email, formData.guardian_whatsapp]);
+
+  const [siblingsDismissed, setSiblingsDismissed] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (fieldErrors[e.target.name]) {
@@ -193,7 +197,6 @@ export const StudentRegistration: React.FC = () => {
         registration_fee_status: formData.registration_fee_status,
         advance_fee_months: formData.advance_fee_months,
         admission_date: formData.admission_date,
-        guardian_email: formData.guardian_email,
         guardian_whatsapp: formData.guardian_whatsapp,
         guardian_password: formData.guardian_whatsapp,
         profile_image_url: profileImageUrl,
@@ -272,14 +275,29 @@ export const StudentRegistration: React.FC = () => {
         </div>
 
         {/* ── Sibling Detection Panel ───────────────────────────── */}
-        {(siblings.length > 0 || siblingsLoading) && (
+        {!siblingsDismissed && (siblings.length > 0 || siblingsLoading) && (
           <div style={{
             marginTop: '16px',
             padding: '14px 16px',
             borderRadius: '10px',
             background: 'rgba(245,158,11,0.08)',
             border: '1px solid rgba(245,158,11,0.35)',
+            position: 'relative'
           }}>
+            <button 
+              type="button"
+              onClick={() => {
+                setSiblingsDismissed(true);
+                setSiblings([]);
+              }}
+              style={{
+                position: 'absolute', top: '10px', right: '10px',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: 'var(--color-text-muted)'
+              }}
+            >
+              ✕
+            </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <span style={{ fontSize: '16px' }}>👨‍👩‍👧</span>
               <strong style={{ fontSize: '14px', color: 'var(--color-warning)' }}>

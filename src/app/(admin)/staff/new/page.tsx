@@ -68,20 +68,29 @@ export const StaffRegistration: React.FC = () => {
         })
       };
 
-      if (adminSupabase && formData.role === 'Teacher') {
-        const { error: authError } = await adminSupabase.auth.admin.createUser({
-          email: formData.email,
-          password: formData.whatsapp_number,
-          email_confirm: true,
-          user_metadata: { role: 'Teacher', name: formData.name, username: formData.email }
-        });
-        
-        if (authError) {
-          if (authError.message.includes('User already registered') || authError.message.includes('already exists')) {
+      if (formData.role === 'Teacher' && formData.email) {
+        try {
+          const res = await fetch('/api/admin/create-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: formData.email,
+              password: formData.whatsapp_number,
+              role: 'Teacher',
+              name: formData.name,
+            }),
+          });
+          const result = await res.json();
+          if (result.error && (result.error.includes('already registered') || result.error.includes('already exists'))) {
             setStatus({ type: 'error', message: 'Email is already registered for another user' });
             return;
+          } else if (result.error && !result.alreadyExists && !result.graceful) {
+            throw new Error(result.error);
           }
-          throw authError;
+        } catch (err: any) {
+          if (err.message !== 'Failed to fetch') {
+            throw err;
+          }
         }
       }
 

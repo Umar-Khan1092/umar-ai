@@ -180,6 +180,33 @@ export const AdminTimetable: React.FC = () => {
       return;
     }
 
+    // ── Conflict Check ──────────────────────────────────────────────────
+    const conflicts: string[] = [];
+    for (const day of newEntry.days) {
+      for (const existing of globalTimetable) {
+        if (newEntry.editing_block_ids?.includes(existing.id || '')) continue;
+        
+        if (existing.day === day) {
+          const exStart = timeToMinutes(existing.start_time);
+          const exEnd = timeToMinutes(existing.end_time);
+          
+          if (startMins < exEnd && endMins > exStart) {
+            if (existing.teacher_id === newEntry.teacher_id) {
+              conflicts.push(`Teacher ${existing.teacher_name} is busy on ${day} (${existing.start_time} - ${existing.end_time}).`);
+            }
+            if (selectedClasses.includes(existing.class_name) && selectedSections.includes(existing.section)) {
+              conflicts.push(`Class ${existing.class_name}-${existing.section} already has ${existing.subject} on ${day} (${existing.start_time} - ${existing.end_time}).`);
+            }
+          }
+        }
+      }
+    }
+    
+    if (conflicts.length > 0) {
+      setStatus({ type: 'error', message: `Conflict detected: ${conflicts[0]}` });
+      return;
+    }
+
 
     try {
       const insertPayload: any[] = [];

@@ -77,7 +77,7 @@ export const TakeAttendance: React.FC = () => {
       (async () => {
         // Use adminSupabase (service role) to bypass RLS when reading settings/staff
         const dbClient = adminSupabase || supabase;
-        const staffRes = await dbClient.from('staff').select('id').eq('username', user.email).limit(1).maybeSingle();
+        const staffRes = await dbClient.from('staff').select('id').ilike('username', user.email).limit(1).maybeSingle();
         const staffId = staffRes.data?.id || user.id;
         
         console.log('Teacher Staff ID:', staffId);
