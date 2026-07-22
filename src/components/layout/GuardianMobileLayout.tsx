@@ -12,6 +12,26 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
   const { students, activeStudent, setActiveStudentId, isLoading } = useGuardian();
   const [showSwitcher, setShowSwitcher] = useState(false);
 
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => {
+        setDeferredPrompt(null);
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-tertiary)' }}>
@@ -58,6 +78,14 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
         </div>
         
         {/* Optional Logo or other top right action */}
+        {deferredPrompt && (
+          <button 
+            onClick={handleInstallClick}
+            style={{ background: '#10B981', border: 'none', color: '#FFFFFF', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}
+          >
+            Install App
+          </button>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -75,6 +103,11 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
               key={item.id} 
               className={`guardian-nav-item ${isActive ? 'active' : ''}`}
               onClick={() => router.push(item.path)}
+              style={{
+                background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                borderRadius: '12px',
+                padding: '8px 4px'
+              }}
             >
               <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
               <span>{item.label}</span>

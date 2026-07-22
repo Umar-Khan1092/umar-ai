@@ -81,6 +81,11 @@ export async function POST(req: Request) {
     }
     
     if (historyPayload.length > 0) {
+      // Delete notifications older than 20 days
+      const twentyDaysAgo = new Date();
+      twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20);
+      await adminSupabase.from('notification_history').delete().lt('created_at', twentyDaysAgo.toISOString());
+
       await adminSupabase.from('notification_history').insert(historyPayload);
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, CheckSquare, FileSpreadsheet, Calendar, LogOut, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -17,6 +17,26 @@ export const TeacherLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname() ?? '';
   const router = useRouter();
   const { logout } = useAuth();
+
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => {
+        setDeferredPrompt(null);
+      });
+    }
+  };
 
   let title = 'Teacher Portal';
 
@@ -47,7 +67,15 @@ export const TeacherLayout = ({ children }: { children: React.ReactNode }) => {
         zIndex: 10
       }}>
         <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#FFFFFF' }}>{title}</h1>
-        <div style={{ display: 'flex', gap: '16px' }}>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {deferredPrompt && (
+            <button 
+              onClick={handleInstallClick}
+              style={{ background: '#10B981', border: 'none', color: '#FFFFFF', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 'bold' }}
+            >
+              Install App
+            </button>
+          )}
           <button 
             onClick={() => { logout(); router.push('/login'); }}
             style={{ background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#FFFFFF', cursor: 'pointer', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }}

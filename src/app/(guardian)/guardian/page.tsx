@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useGuardian } from '@/context/GuardianContext';
 import { User, LogOut, ChevronRight } from 'lucide-react';
 import '@/app/teacherportal/TeacherPortal.css'; // Reuse some card styles
 import { supabase } from '@/lib/supabase';
 
 export const GuardianDashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const { setActiveStudentId } = useGuardian();
   const router = useRouter();
   const [students, setStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,7 +80,10 @@ export const GuardianDashboard: React.FC = () => {
             {students.map(student => (
               <div 
                 key={student.id} 
-                onClick={() => router.push(`/guardian/student/${student.id}`)}
+                onClick={() => {
+                  setActiveStudentId(student.id);
+                  router.push('/guardian/home');
+                }}
                 className="card"
                 style={{ 
                   padding: '20px', 

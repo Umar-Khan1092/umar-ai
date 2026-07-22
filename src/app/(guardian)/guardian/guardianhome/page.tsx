@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useGuardian } from '@/context/GuardianContext';
-import { CheckSquare, FileSpreadsheet, Banknote, Bell, Calendar, MessageCircle, Send } from 'lucide-react';
+import { CheckSquare, FileSpreadsheet, Banknote, Bell, Calendar, MessageCircle, Send, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export const GuardianHome: React.FC = () => {
   const { user } = useAuth();
-  const { activeStudent } = useGuardian();
+  const { activeStudent, students, setActiveStudentId } = useGuardian();
   const router = useRouter();
 
   const [adminRemark, setAdminRemark] = useState('');
@@ -106,6 +106,9 @@ export const GuardianHome: React.FC = () => {
     { id: 'timetable', label: 'Timetable', icon: Calendar, color: '#2563EB', bg: '#EFF6FF', path: '/guardian/academics' }
   ];
 
+  // Siblings = all students linked to the same guardian except the active one
+  const siblings = students.filter(s => s.id !== activeStudent?.id);
+
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
       <h1 style={{ fontSize: '24px', color: '#1E293B', margin: '0 0 8px 0' }}>
@@ -141,6 +144,54 @@ export const GuardianHome: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* Siblings Section */}
+      {siblings.length > 0 && (
+        <div style={{ marginTop: '24px' }}>
+          <h2 style={{ fontSize: '18px', margin: '0 0 16px 0', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Users size={20} color="#7C3AED" /> Siblings
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {siblings.map(sibling => (
+              <div
+                key={sibling.id}
+                onClick={() => {
+                  setActiveStudentId(sibling.id);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  padding: '14px 16px',
+                  background: '#FFFFFF',
+                  borderRadius: '12px',
+                  border: '1px solid #E2E8F0',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  transition: 'all 0.2s ease'
+                }}
+                onPointerDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+                onPointerUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#F3E8FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '16px', flexShrink: 0 }}>
+                  {sibling.profile_image_url ? (
+                    <img src={sibling.profile_image_url} alt={sibling.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    sibling.name?.charAt(0) || '?'
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '15px', color: '#1E293B' }}>{sibling.name}</div>
+                  <div style={{ fontSize: '13px', color: '#64748B' }}>{sibling.academic_class} — {sibling.section}</div>
+                </div>
+                <div style={{ fontSize: '12px', color: '#7C3AED', fontWeight: 600, background: '#F3E8FF', padding: '4px 10px', borderRadius: '20px' }}>
+                  Switch
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Send Remark to Admin */}
       <div style={{ marginTop: '24px', padding: '16px', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -183,3 +234,4 @@ export const GuardianHome: React.FC = () => {
 };
 
 export default GuardianHome;
+

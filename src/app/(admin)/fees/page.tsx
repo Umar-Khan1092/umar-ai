@@ -109,7 +109,7 @@ export const FeeManagement: React.FC = () => {
   }, [paramClass, paramSection]);
 
   const handleBackToClasses = () => {
-    router.push('/students/fees');
+    router.push('/classes');
   };
 
   const fetchVouchers = useCallback(async () => {

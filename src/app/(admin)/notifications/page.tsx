@@ -261,25 +261,30 @@ export const NotificationsPage: React.FC = () => {
           <h2 className="card-heading">Message</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="input-group">
-              <label className="input-label">Title <span className="required-indicator">*</span></label>
+              <label className="input-label" style={{ fontWeight: 600, color: 'var(--color-text-main)', marginBottom: '8px' }}>Title <span className="required-indicator">*</span></label>
               <input
                 className="input-field"
                 value={form.title}
                 onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
                 placeholder={`e.g. "${form.category} Update"`}
                 required
+                style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--color-border)', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.2s' }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#6366F1'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
               />
             </div>
             <div className="input-group">
-              <label className="input-label">Message <span className="required-indicator">*</span></label>
+              <label className="input-label" style={{ fontWeight: 600, color: 'var(--color-text-main)', marginBottom: '8px' }}>Message <span className="required-indicator">*</span></label>
               <textarea
                 className="input-field"
                 value={form.message}
                 onChange={e => setForm(prev => ({ ...prev, message: e.target.value }))}
                 placeholder="Type your notification message here..."
-                rows={3}
+                rows={4}
                 required
-                style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                style={{ resize: 'vertical', fontFamily: 'inherit', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--color-border)', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.2s' }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#6366F1'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
               />
             </div>
             <div className="input-group">

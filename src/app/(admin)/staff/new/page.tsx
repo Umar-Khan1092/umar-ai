@@ -28,8 +28,21 @@ export const StaffRegistration: React.FC = () => {
     allowed_assessments: [] as string[]
   });
 
+  const [schoolInfo, setSchoolInfo] = useState<{name: string, logo: string}>({ name: 'School Name', logo: '' });
+
   useEffect(() => {
-    // Optional: Fetch settings if needed in the future
+    (async () => {
+      try {
+        const dbClient = adminSupabase || supabase;
+        const res = await dbClient.from('settings').select('*').eq('key', 'app_settings').single();
+        if (res.data?.value) {
+          const data = res.data.value;
+          setSchoolInfo({ name: data.school_name || 'School Name', logo: data.school_logo || '' });
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      }
+    })();
   }, []);
 
   const [status, setStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
@@ -118,10 +131,23 @@ export const StaffRegistration: React.FC = () => {
   };
 
   return (
-    <div className="registration-page">
-      <div style={{ marginBottom: '16px' }}>
-        <h1 className="section-heading" style={{ marginBottom: 0 }}>Register New Staff</h1>
+    <div className="registration-page" style={{ position: 'relative', overflow: 'hidden', padding: '20px', backgroundColor: '#f8fafc', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+      {/* Background shape */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '160px', backgroundColor: '#2563eb', zIndex: 0, borderBottomLeftRadius: '50% 20%', borderBottomRightRadius: '50% 20%' }}></div>
+      
+      <div style={{ position: 'relative', zIndex: 1, marginBottom: '32px', textAlign: 'center', paddingTop: '16px' }}>
+        {schoolInfo.logo && (
+          <img 
+            src={schoolInfo.logo} 
+            alt="School Logo" 
+            style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', margin: '0 auto 12px', border: '4px solid #fff', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
+          />
+        )}
+        <h1 className="section-heading" style={{ marginBottom: 0, fontSize: '28px', color: schoolInfo.logo ? '#fff' : '#1e293b', fontWeight: 'bold' }}>{schoolInfo.name}</h1>
+        <h2 style={{ fontSize: '18px', color: schoolInfo.logo ? '#e2e8f0' : '#64748b', marginTop: '4px', fontWeight: '500' }}>Staff Registration Form</h2>
       </div>
+
+      <div style={{ position: 'relative', zIndex: 1, backgroundColor: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' }}>
 
       {status.type && (
         <div className={`toast ${status.type}`}>
@@ -198,6 +224,7 @@ export const StaffRegistration: React.FC = () => {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 };

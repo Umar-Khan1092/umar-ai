@@ -71,8 +71,9 @@ self.addEventListener('push', (event) => {
           url: data.url || '/'
         }
       };
+      const title = data.title ? `EduERP: ${data.title}` : 'EduERP Notification';
       event.waitUntil(
-        self.registration.showNotification(data.title || 'EduERP Notification', options)
+        self.registration.showNotification(title, options)
       );
     } catch (e) {
       // Fallback for plain text push

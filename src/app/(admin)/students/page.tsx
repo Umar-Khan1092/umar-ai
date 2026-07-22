@@ -58,15 +58,15 @@ export const StudentRecords: React.FC = () => {
       if (error) throw error;
       
       if (data) {
-        let activeStudents = data.filter((s: any) => s.status !== 'Ex-Students');
+        let allStudents = data;
         
         if (className && sectionName) {
-          activeStudents = activeStudents.filter((s: any) => 
+          allStudents = allStudents.filter((s: any) => 
             s.academic_class === className && s.section === sectionName
           );
         }
 
-        setStudents(activeStudents);
+        setStudents(allStudents);
       }
     } catch (err) {
       console.error(err);
@@ -84,22 +84,42 @@ export const StudentRecords: React.FC = () => {
     }).catch(err => console.error(err));
   }, []);
 
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
   // ── Derived: filter students via useMemo (no extra state/effect needed) ──
-  const filteredStudents = useMemo(() => {
-    let result = students;
+  const { filteredStudents, metrics } = useMemo(() => {
+    let baseResult = students;
+    
+    if (classFilter) {
+      baseResult = baseResult.filter(s => s.academic_class === classFilter);
+    }
+    
+    // Metrics
+    const activeCount = baseResult.filter(s => s.status !== 'Ex-Students').length;
+    const exStudentsCount = baseResult.filter(s => s.status === 'Ex-Students').length;
+    
+    let admissions = baseResult;
+    if (fromDate) admissions = admissions.filter(s => s.admission_date >= fromDate);
+    if (toDate) admissions = admissions.filter(s => s.admission_date <= toDate);
+    const newAdmissionsCount = admissions.length;
+
+    // Search filter for table
+    let tableResult = baseResult.filter(s => s.status !== 'Ex-Students'); // Main table shows only active
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(s =>
+      tableResult = tableResult.filter(s =>
         s.name.toLowerCase().includes(q) ||
         (s.father_name && s.father_name.toLowerCase().includes(q)) ||
         (s.roll_number && s.roll_number.toLowerCase().includes(q))
       );
     }
-    if (classFilter) {
-      result = result.filter(s => s.academic_class === classFilter);
-    }
-    return result;
-  }, [students, searchQuery, classFilter]);
+
+    return { 
+      filteredStudents: tableResult,
+      metrics: { activeCount, exStudentsCount, newAdmissionsCount }
+    };
+  }, [students, searchQuery, classFilter, fromDate, toDate]);
 
 
   const handleStruckOff = async (studentId: string, studentName: string) => {
@@ -162,7 +182,6 @@ export const StudentRecords: React.FC = () => {
   }, []);
 
 
-  const activeStudentsCount = filteredStudents.filter(s => s.status !== 'Ex-Students').length;
 
   return (
     <div className="records-page">
@@ -170,7 +189,7 @@ export const StudentRecords: React.FC = () => {
         <div style={{ marginBottom: '16px' }}>
           <button 
             className="btn-primary" 
-            onClick={() => router.push('/students/records')} 
+            onClick={() => router.push('/classes')} 
             style={{ marginBottom: '16px', backgroundColor: '#e2e8f0', color: '#0f172a', display: 'flex', alignItems: 'center', width: 'fit-content' }}
           >
             <ArrowLeft size={16} style={{ marginRight: '8px' }} />
@@ -197,29 +216,37 @@ export const StudentRecords: React.FC = () => {
         <div style={{ marginBottom: '16px' }}>
           <button 
             className="btn-primary" 
-            onClick={() => router.push('/students/records')} 
+            onClick={() => router.push('/classes')} 
             style={{ marginBottom: '16px', backgroundColor: '#e2e8f0', color: '#0f172a', display: 'flex', alignItems: 'center', width: 'fit-content' }}
           >
             <ArrowLeft size={16} style={{ marginRight: '8px' }} />
             Back to Classes
           </button>
-          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <h2 style={{ marginTop: '0', fontSize: '1.25rem', color: 'var(--color-text-main)' }}>
                 Global Student Search
               </h2>
             </div>
-            <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               <div className="kpi-badge">
-                <span className="kpi-label">Found Students</span>
-                <span className="kpi-value">{activeStudentsCount}</span>
+                <span className="kpi-label">Total Active Students</span>
+                <span className="kpi-value">{metrics.activeCount}</span>
+              </div>
+              <div className="kpi-badge" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>
+                <span className="kpi-label">New Admissions</span>
+                <span className="kpi-value">{metrics.newAdmissionsCount}</span>
+              </div>
+              <div className="kpi-badge" style={{ backgroundColor: '#fee2e2', color: '#991b1b' }}>
+                <span className="kpi-label">Ex-Students</span>
+                <span className="kpi-value">{metrics.exStudentsCount}</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="records-controls">
+      <div className="records-controls" style={{ flexWrap: 'wrap' }}>
         <div className="search-box">
           <Search size={18} className="search-icon" />
           <input 
@@ -231,11 +258,31 @@ export const StudentRecords: React.FC = () => {
           />
         </div>
         
-        <div className="filters">
+        <div className="filters" style={{ flexWrap: 'wrap', gap: '12px', display: 'flex' }}>
           <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setIsBulkUploadOpen(true)}>
             <UploadCloud size={16} /> Import CSV
           </button>
           
+          <div className="filter-group">
+            <span style={{ fontSize: '12px', color: '#64748b' }}>From:</span>
+            <input 
+              type="date" 
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="filter-select"
+            />
+          </div>
+
+          <div className="filter-group">
+            <span style={{ fontSize: '12px', color: '#64748b' }}>To:</span>
+            <input 
+              type="date" 
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="filter-select"
+            />
+          </div>
+
           {!className && (
             <div className="filter-group">
               <Filter size={16} className="filter-icon" />
@@ -251,6 +298,7 @@ export const StudentRecords: React.FC = () => {
           )}
         </div>
       </div>
+
 
       <div className="table-container">
         <table className="data-table">
