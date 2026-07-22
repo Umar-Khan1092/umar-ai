@@ -1,0 +1,14 @@
+.staff-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 100%;
+  padding: 0 var(--space-4);
+  padding-top: var(--space-2);
+}
+
+.staff-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}

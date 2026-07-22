@@ -1,0 +1,45 @@
+.attendance-page .radio-group {
+  display: flex;
+  gap: 12px;
+}
+
+.attendance-page .radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--color-background);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.attendance-page .radio-label input[type="radio"] {
+  display: none;
+}
+
+.attendance-page .radio-label.active-present {
+  background-color: #DEF7EC;
+  border-color: #31C48D;
+  color: #046C4E;
+}
+
+.attendance-page .radio-label.active-absent {
+  background-color: #FDE8E8;
+  border-color: #F98080;
+  color: #9B1C1C;
+}
+
+.attendance-page .radio-label.active-leave {
+  background-color: #E1EFFE;
+  border-color: #76A9FA;
+  color: #1E429F;
+}
+
+.attendance-page .radio-label:hover {
+  filter: brightness(0.95);
+}

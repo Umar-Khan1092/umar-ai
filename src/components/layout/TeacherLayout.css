@@ -1,0 +1,216 @@
+.teacher-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-background-soft, #f8fafc);
+}
+
+.teacher-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-4);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.teacher-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.teacher-logo {
+  width: 32px;
+  height: 32px;
+  background-color: var(--color-primary);
+  border-radius: 8px;
+}
+
+.teacher-brand {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--color-text-main);
+}
+
+.teacher-nav-desktop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.teacher-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 16px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.teacher-nav-link:hover {
+  color: var(--color-primary);
+  background-color: var(--color-surface-hover);
+}
+
+.teacher-nav-link.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.teacher-header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.teacher-welcome {
+  font-weight: 500;
+  color: var(--color-text-main);
+}
+
+.teacher-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: #DC2626;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.teacher-logout-btn:hover {
+  background-color: #FEE2E2;
+}
+
+.mobile-menu-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text-main);
+  cursor: pointer;
+}
+
+.mobile-nav-dropdown {
+  display: none;
+}
+
+.mobile-bottom-bar {
+  display: none;
+}
+
+.teacher-main-content {
+  flex: 1;
+  padding: var(--space-6);
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .teacher-nav-desktop {
+    display: none;
+  }
+  
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  .mobile-menu-toggle {
+    display: block;
+  }
+  
+  .teacher-main-content {
+    padding: var(--space-4);
+    padding-bottom: 80px; /* Space for bottom bar */
+  }
+  
+  /* Dropdown Menu */
+  .mobile-nav-dropdown {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    background-color: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+    z-index: 40;
+    box-shadow: var(--shadow-md);
+  }
+  
+  .mobile-welcome {
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+  }
+  
+  .mobile-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    color: var(--color-text-main);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid var(--color-border);
+    background: transparent;
+    border: none;
+    text-align: left;
+    width: 100%;
+  }
+  
+  .mobile-nav-link.active {
+    color: var(--color-primary);
+    background-color: var(--color-surface-hover);
+  }
+  
+  .text-danger {
+    color: #DC2626 !important;
+  }
+  
+  /* Bottom Navigation Bar (App-like feel) */
+  .mobile-bottom-bar {
+    display: flex;
+    justify-content: space-around;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--color-background);
+    border-top: 1px solid var(--color-border);
+    height: 64px;
+    z-index: 50;
+  }
+  
+  .bottom-bar-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 1;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  
+  .bottom-bar-link.active {
+    color: var(--color-primary);
+  }
+}

@@ -1,0 +1,383 @@
+/* MATERIAL DESIGN 3 TOKENS FOR TEACHER PORTAL */
+:root {
+  --tp-primary: #2563EB;
+  --tp-primary-light: #DBEAFE;
+  --tp-success: #16A34A;
+  --tp-success-light: #DCFCE7;
+  --tp-danger: #DC2626;
+  --tp-danger-light: #FEE2E2;
+  --tp-warning: #D97706;
+  --tp-warning-light: #FEF3C7;
+  
+  --tp-spacing-sm: 8px;
+  --tp-spacing-md: 16px;
+  --tp-spacing-lg: 24px;
+  
+  --tp-radius-sm: 8px;
+  --tp-radius-md: 16px;
+  --tp-radius-lg: 24px;
+  
+  --tp-shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --tp-shadow-pressed: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.teacher-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-spacing-lg);
+  padding: var(--tp-spacing-md);
+  padding-bottom: 80px; /* Space for bottom bar */
+  animation: fadeSlideUp 0.3s ease;
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.teacher-page-header h1 {
+  font-size: 1.5rem;
+  color: var(--color-text-main);
+  margin-bottom: 4px;
+}
+
+.teacher-page-header p {
+  color: var(--color-text-muted);
+}
+
+.teacher-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 150px;
+}
+
+.control-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.attendance-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.attendance-bulk-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-bulk {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-bulk.present {
+  background-color: #D1FAE5;
+  color: #065F46;
+}
+
+.btn-bulk.absent {
+  background-color: #FEE2E2;
+  color: #991B1B;
+}
+
+.student-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--color-text-muted);
+  background-color: var(--color-background);
+  border-radius: 12px;
+  border: 1px dashed var(--color-border);
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .data-table th, .data-table td {
+    padding: 8px 4px;
+    font-size: 13px;
+  }
+  
+  .table-responsive .att-btn {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+  }
+}
+
+.student-attendance-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.student-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.student-info h4 {
+  font-size: 1rem;
+  color: var(--color-text-main);
+  margin-bottom: 2px;
+}
+
+.student-info p {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.attendance-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.att-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  background: transparent;
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.att-btn.present.active {
+  background-color: #10B981;
+  border-color: #10B981;
+  color: white;
+}
+
+.att-btn.absent.active {
+  background-color: #EF4444;
+  border-color: #EF4444;
+  color: white;
+}
+
+.att-btn.leave.active {
+  background-color: #F59E0B;
+  border-color: #F59E0B;
+  color: white;
+}
+
+.attendance-save-footer {
+  margin-top: 24px;
+}
+
+.full-width {
+  width: 100%;
+  padding: 16px;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 600px) {
+  .student-attendance-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .attendance-buttons {
+    justify-content: space-between;
+  }
+  
+  .att-btn {
+    flex: 1;
+    border-radius: 8px;
+    height: 48px;
+  }
+}
+
+/* PREMIUM WHATSAPP STYLE STUDENT CARDS */
+.student-card-modern {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--color-surface);
+  border-radius: 20px;
+  box-shadow: var(--shadow-premium);
+  border: 1px solid var(--color-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.student-card-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+}
+
+.student-avatar-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #60A5FA, #2563EB);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(37,99,235,.3);
+}
+
+.student-info-modern {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.student-info-modern h4 {
+  margin: 0;
+  color: var(--color-text-heading);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.student-info-modern p {
+  margin: 0;
+  color: var(--color-text-main);
+  font-size: 0.85rem;
+}
+
+.att-btn-modern {
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  border: 2px solid var(--color-border);
+  background: transparent;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.att-btn-modern:hover {
+  transform: scale(1.05);
+}
+.att-btn-modern:active {
+  transform: scale(0.95);
+}
+
+.att-btn-modern.present.active {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: white;
+  box-shadow: 0 6px 16px rgba(22,163,74,.4);
+}
+.att-btn-modern.absent.active {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: white;
+  box-shadow: 0 6px 16px rgba(239,68,68,.4);
+}
+.att-btn-modern.leave.active {
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+  color: white;
+  box-shadow: 0 6px 16px rgba(245,158,11,.4);
+}
+
+.top-app-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 24px;
+}
+.top-app-bar h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: var(--color-text-heading);
+  font-weight: 700;
+}
+.top-app-bar p {
+  margin: 4px 0 0 0;
+  color: var(--color-text-main);
+}
+
+/* PREMIUM SUMMARY CARDS */
+.summary-card {
+  flex: 1;
+  background: var(--color-surface);
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.summary-card.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+  box-shadow: 0 8px 24px rgba(37,99,235,.3);
+}
+.summary-card p {
+  margin: 0 0 4px 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: inherit;
+  opacity: 0.8;
+}
+.summary-card h3 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.floating-action-bar {
+  position: sticky;
+  bottom: 20px;
+  margin: 20px auto 0;
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 16px 24px;
+  border-radius: 100px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  border: 1px solid rgba(255,255,255,0.4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  z-index: 100;
+}
