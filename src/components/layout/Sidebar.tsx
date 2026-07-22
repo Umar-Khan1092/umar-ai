@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Home, Users, Briefcase, GraduationCap, Calendar, Settings, ChevronLeft, Menu, CreditCard } from 'lucide-react';
+import { Home, Users, Briefcase, GraduationCap, Calendar, Settings, ChevronLeft, Menu, CreditCard, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -29,6 +29,7 @@ const adminNavItems: NavItem[] = [
   { name: 'Academics',          icon: GraduationCap, path: '/academics',     color: '#0891B2' },
   { name: 'Attendance',         icon: Calendar,      path: '/attendance',    color: '#16A34A' },
   { name: 'Timetable',          icon: Calendar,      path: '/timetable',     color: '#9333EA' },
+  { name: 'Notifications',      icon: Bell,          path: '/notifications', color: '#F43F5E' },
   { name: 'Settings',           icon: Settings,      path: '/settings',      color: '#94A3B8' },
 ];
 

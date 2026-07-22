@@ -14,6 +14,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import { PushNotificationManager } from "@/components/PushNotificationManager";
+
 export const metadata: Metadata = {
   title: "ERRP - Education Resource Planning",
   description: "School Management System",
@@ -30,6 +32,7 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <AuthProvider>
           {children}
+          <PushNotificationManager />
         </AuthProvider>
         <script
           dangerouslySetInnerHTML={{

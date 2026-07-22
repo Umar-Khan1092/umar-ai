@@ -63,9 +63,10 @@ self.addEventListener('push', (event) => {
     try {
       const data = event.data.json();
       const options = {
-        body: data.body || 'You have a new notification',
-        icon: '/logo.webp',
+        body: data.message || data.body || 'You have a new notification',
+        icon: data.icon || '/logo.webp',
         badge: '/favicon.svg',
+        vibrate: [200, 100, 200, 100, 200, 100, 200], // Distinctive vibration pattern
         data: {
           url: data.url || '/'
         }
@@ -79,6 +80,7 @@ self.addEventListener('push', (event) => {
         self.registration.showNotification('EduERP Notification', {
           body: event.data.text(),
           icon: '/logo.webp',
+          vibrate: [200, 100, 200]
         })
       );
     }
@@ -87,13 +89,21 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  if (event.notification.data && event.notification.data.url) {
-    event.waitUntil(
-      clients.openWindow(event.notification.data.url)
-    );
-  } else {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
+  const urlToOpen = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Check if there is already a window/tab open with the target URL
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If not, then open the target URL in a new window/tab
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
