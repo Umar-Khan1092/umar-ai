@@ -205,7 +205,7 @@ export const StudentRecords: React.FC = () => {
             <div style={{ display: 'flex', gap: '16px' }}>
               <div className="kpi-badge">
                 <span className="kpi-label">Active Students</span>
-                <span className="kpi-value">{activeStudentsCount}</span>
+                <span className="kpi-value">{metrics.activeCount}</span>
               </div>
             </div>
           </div>
