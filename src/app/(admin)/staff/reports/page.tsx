@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Filter, Calendar, FileText, CheckCircle, Clock, AlertCircle, X } from 'lucide-react';
 import { supabase, adminSupabase } from '@/lib/supabase';
-import '@/app/(admin)/fees/FeeManagement.css'; // Reuse table/card styles
+ // Reuse table/card styles
 
 export const StaffReports: React.FC = () => {
   const [slips, setSlips] = useState<any[]>([]);

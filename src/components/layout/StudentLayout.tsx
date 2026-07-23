@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { List, ArrowUpCircle, UserX, FileText } from 'lucide-react';
-import './StudentLayout.css';
+
 
 const studentNavItems = [
   { name: 'Records',     icon: List,          path: '/students',          exact: true,  color: '#2563EB' },

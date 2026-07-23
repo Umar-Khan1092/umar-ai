@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle, Search, ArrowLeft, CreditCard, Calendar, Filter, ChevronDown, GraduationCap, AlertCircle, Bell } from 'lucide-react';
 import { HighlightText } from '@/components/ui/HighlightText';
 import { formatDate } from '@/utils/formatDate';
-import '@/app/(admin)/fees/FeeManagement.css';
+
 import { supabase, adminSupabase } from '@/lib/supabase';
 
 const db = adminSupabase || supabase;
@@ -890,55 +890,8 @@ export const FeeManagement: React.FC = () => {
             </div>
           </div>
           
-          {!selectedClassGroup && !searchQuery ? (
-            <div style={{ padding: '0' }}>
-              {classGroups.length === 0 ? (
-                <div className="empty-state-placeholder">
-                  <p className="body-text">No invoices found for the selected filters.</p>
-                </div>
-              ) : (
-                <div className="classes-grid">
-                  {classGroups.map((group: any) => (
-                    <div 
-                      key={`${group.className}-${group.section}`} 
-                      className="class-card"
-                      onClick={() => setSelectedClassGroup({ className: group.className, section: group.section })}
-                    >
-                      <div className="card-header">
-                        <div className="icon-wrapper">
-                          <GraduationCap size={24} />
-                        </div>
-                        <h3>{group.className}</h3>
-                      </div>
-                      <div className="card-body">
-                        <div className="info-row">
-                          <span className="label">Section:</span>
-                          <span className="value section-badge">{group.section}</span>
-                        </div>
-                        <div className="info-row mt-2">
-                          <span className="label">Total Invoices:</span>
-                          <span className="value count">
-                            <CreditCard size={16} /> {group.total}
-                          </span>
-                        </div>
-                        <div className="info-row">
-                          <span className="label">Pending:</span>
-                          <span className="value count" style={{ color: 'var(--color-warning)' }}>
-                            <AlertCircle size={16} /> {group.pending}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="card-footer">
-                        <span>View Invoices &rarr;</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="table-container">
-              <table className="data-table">
+          <div className="table-container">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>#</th>
@@ -948,55 +901,67 @@ export const FeeManagement: React.FC = () => {
                   <th>Fees Breakdown</th>
                   <th>Remainings</th>
                   <th>Total Due</th>
-                  <th>Action</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredVouchers.length > 0 ? (
-                  filteredVouchers.map((v, index) => (
+                  filteredVouchers.map((v: any, idx: number) => (
                     <tr key={v.id}>
-                      <td style={{ color: 'var(--color-text-muted)', fontSize: '12px', fontWeight: 500 }}>
-                        {String(index + 1).padStart(2, '0')}
-                      </td>
-                      <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{v.id.split('-')[0]}</td>
+                      <td>{idx + 1}</td>
+                      <td><span className="badge">V-{v.id.substring(0, 6)}</span></td>
                       <td>
-                        <div style={{ fontWeight: 500, color: 'var(--color-primary)' }}>
-                          <HighlightText text={v.student_name} highlight={searchQuery} />
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                          Roll: <HighlightText text={v.roll_number || 'N/A'} highlight={searchQuery} /> | {v.class_name} ({v.section})
+                        <div className="student-info">
+                          <span className="font-semibold">{v.student_name}</span>
+                          <span className="text-sm text-gray-500">Roll: {v.roll_number || 'N/A'} • {v.class_name} {v.section}</span>
                         </div>
                       </td>
-                      <td><HighlightText text={v.billing_month} highlight={searchQuery} /></td>
+                      <td>{v.billing_month}</td>
+                      <td style={{ fontSize: '13px' }}>
+                        <div>Tuition: ₨{v.tuition_fee}</div>
+                        {v.transport_fee > 0 && <div>Transport: ₨{v.transport_fee}</div>}
+                        {v.academy_fee > 0 && <div>Academy: ₨{v.academy_fee}</div>}
+                        {v.custom_fee_amount > 0 && <div>{v.custom_fee_title || 'Other'}: ₨{v.custom_fee_amount}</div>}
+                      </td>
                       <td>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span>Tuition: ₨{v.tuition_fee || 0}</span>
-                          {(v.transport_fee || 0) > 0 && <span>Transport: ₨{v.transport_fee}</span>}
-                          {(v.academy_fee || 0) > 0 && <span>Academy: ₨{v.academy_fee}</span>}
-                          {(v.custom_fee_amount || 0) > 0 && <span>{v.custom_fee_title || 'Custom'}: ₨{v.custom_fee_amount}</span>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ color: v.arrears > 0 ? '#DC2626' : 'var(--color-text-secondary)' }}>
+                            ₨{v.arrears}
+                          </span>
+                          {v.arrears > 0 && (
+                            <button 
+                              className="btn-icon" 
+                              onClick={() => handleRemainingsClick(v)}
+                              title="View History"
+                              style={{ padding: '4px', height: 'auto', minWidth: 'auto', background: '#eff6ff', color: '#2563EB', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              Details
+                            </button>
+                          )}
                         </div>
                       </td>
-                      <td 
-                        style={{ color: '#DC2626', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
-                        onClick={() => handleRemainingsClick(v)}
-                      >
-                        ₨ {v.total_amount - (v.paid_amount || 0)}
+                      <td className="font-semibold" style={{ color: 'var(--color-text-heading)' }}>
+                        ₨{(v.total_amount || 0).toLocaleString()}
                       </td>
-                      <td style={{ fontWeight: 600 }}>₨ {v.total_amount}</td>
+                      <td>
+                        <span className={`status-badge ${v.status.toLowerCase()}`}>
+                          {v.status}
+                        </span>
+                      </td>
                       <td>
                         {v.status !== 'Paid' ? (
                           <button 
                             className="btn-primary" 
-                            style={{ padding: '4px 8px', fontSize: '12px' }} 
-                            onClick={() => handlePay(v)}
-                            disabled={isPaying === v.id}
+                            style={{ padding: '6px 12px', fontSize: '13px' }}
+                            onClick={() => { setPaymentVoucher(v); setPaymentBreakdown({}); setShowPaymentModal(true); }}
                           >
-                            {v.status === 'Partial' ? 'Pay Remainings' : 'Pay Now'}
+                            Receive
                           </button>
                         ) : (
-                          <div style={{ fontSize: '12px', color: 'var(--color-success)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-                              <CheckCircle size={14} /> Paid
+                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '12px', gap: '4px' }}>
+                            <span style={{ color: 'var(--color-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <CheckCircle size={14} /> Received
                             </span>
                             {v.paid_date && (
                               <span style={{ color: 'var(--color-text-muted)' }}>
@@ -1018,7 +983,6 @@ export const FeeManagement: React.FC = () => {
               </tbody>
             </table>
           </div>
-          )}
         </div>
       )}
 
@@ -1324,65 +1288,82 @@ export const FeeManagement: React.FC = () => {
       {/* Parent Portal Bulk Notification Modal */}
       {showNotifModal && (
         <div className="modal-overlay" onClick={() => !notifSending && setShowNotifModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '520px', borderRadius: '16px' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Bell size={20} style={{ color: '#6366f1' }} />
-                Send Portal Notifications
-              </h2>
-              <button className="icon-btn" onClick={() => setShowNotifModal(false)}>×</button>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '540px', borderRadius: '20px', padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.15)' }}>
+            {/* Modal Header */}
+            <div style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Bell size={20} color="white" />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, color: 'white', fontSize: '18px', fontWeight: 700 }}>Send Fee Notifications</h2>
+                  <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '13px', marginTop: '2px' }}>
+                    {reportsView === 'pending' ? 'Fee Defaulters Reminder' : 'Payment Confirmation'}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowNotifModal(false)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', color: 'white', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>×</button>
             </div>
 
-            <div className="modal-body">
+            <div style={{ padding: '24px 28px' }}>
               {!notifResults ? (
                 <>
-                  <div style={{ padding: '16px', background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe', marginBottom: '16px' }}>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#1e40af', lineHeight: '1.6' }}>
-                      This will send a professional <strong>{reportsView === 'pending' ? 'fee reminder' : 'payment confirmation'}</strong> notification directly to each parent's portal for all <strong>{reportsView === 'pending' ? 'pending/partial' : 'paid'}</strong> invoices in the current filter.
+                  <div style={{ padding: '16px', background: '#f0f9ff', borderRadius: '12px', border: '1px solid #bae6fd', marginBottom: '20px' }}>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#0c4a6e', lineHeight: '1.7' }}>
+                      📣 A professional <strong>{reportsView === 'pending' ? 'fee reminder' : 'payment confirmation'}</strong> will be automatically sent to each parent's portal for all <strong>{reportsView === 'pending' ? 'pending/partial' : 'paid'}</strong> invoices in the current filter.
                     </p>
                   </div>
-                  <div style={{ padding: '14px', background: 'var(--color-bg-secondary)', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: '1.7' }}>
-                    <strong>Sample notification preview:</strong><br />
+
+                  <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Message Preview</div>
+                  <div style={{ padding: '16px', background: 'var(--color-surface, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border)', fontSize: '13.5px', color: 'var(--color-text-primary)', lineHeight: '1.8', fontFamily: 'Georgia, serif', whiteSpace: 'pre-line' }}>
                     {reportsView === 'pending'
-                      ? '"Dear Parent/Guardian, This is a reminder that the fee for [Student Name] for [Month] is still pending. 💰 Total Due: ₨X,XXX..."'
-                      : '"Dear Parent/Guardian, This is to confirm that the fee payment for [Student Name] for [Month] has been received. ✅ Amount Paid: ₨X,XXX..."'
+                      ? 'Dear Parent/Guardian,\n\nOur records indicate that your child\'s monthly fee is currently outstanding. Kindly submit the payment at your earliest convenience to avoid any inconvenience.\n\nThank you,\nSchool Administration'
+                      : 'Dear Parent/Guardian,\n\nYour child\'s fee payment for ' + (monthFilter ? new Date(monthFilter + '-01').toLocaleString('default', { month: 'long', year: 'numeric' }) : 'the selected period') + ' has been successfully received. Thank you for your timely payment.\n\nThank you,\nSchool Administration'
                     }
                   </div>
                 </>
               ) : (
                 <div>
                   {notifResults.sent > 0 && (
-                    <div style={{ padding: '16px', background: '#dcfce7', borderRadius: '8px', border: '1px solid #bbf7d0', marginBottom: '12px' }}>
-                      <h3 style={{ color: '#15803d', margin: '0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <CheckCircle size={18} /> {notifResults.sent} Notifications Sent to Parent Portal
-                      </h3>
+                    <div style={{ padding: '20px', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #86efac', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <CheckCircle size={22} color="#16a34a" />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#15803d', fontSize: '16px' }}>{notifResults.sent} Notifications Sent</div>
+                        <div style={{ color: '#4ade80', fontSize: '13px' }}>Successfully delivered to parent portals</div>
+                      </div>
                     </div>
                   )}
                   {notifResults.failed > 0 && (
-                    <div style={{ padding: '16px', background: '#fee2e2', borderRadius: '8px', border: '1px solid #fecaca' }}>
-                      <h3 style={{ color: '#b91c1c', margin: '0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <AlertCircle size={18} /> {notifResults.failed} Failed
-                      </h3>
+                    <div style={{ padding: '20px', background: '#fef2f2', borderRadius: '12px', border: '1px solid #fca5a5', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <AlertCircle size={22} color="#dc2626" />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#b91c1c', fontSize: '16px' }}>{notifResults.failed} Failed</div>
+                        <div style={{ color: '#f87171', fontSize: '13px' }}>Some notifications could not be delivered</div>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
-            </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button className="secondary-btn" onClick={() => setShowNotifModal(false)} disabled={notifSending}>
-                {notifResults ? 'Close' : 'Cancel'}
-              </button>
-              {!notifResults && (
-                <button
-                  onClick={handleSendBulkNotification}
-                  disabled={notifSending}
-                  style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, fontSize: '14px', cursor: notifSending ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: notifSending ? 0.7 : 1 }}
-                >
-                  <Bell size={16} />
-                  {notifSending ? 'Sending...' : 'Send Notifications'}
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '20px', marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button onClick={() => setShowNotifModal(false)} disabled={notifSending} style={{ padding: '10px 24px', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'transparent', fontWeight: 600, fontSize: '14px', cursor: 'pointer', color: 'var(--color-text-primary)' }}>
+                  {notifResults ? 'Close' : 'Cancel'}
                 </button>
-              )}
+                {!notifResults && (
+                  <button
+                    onClick={handleSendBulkNotification}
+                    disabled={notifSending}
+                    style={{ padding: '10px 24px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', fontWeight: 600, fontSize: '14px', cursor: notifSending ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: notifSending ? 0.7 : 1, boxShadow: '0 4px 12px rgba(79,70,229,0.3)' }}
+                  >
+                    <Bell size={16} />
+                    {notifSending ? 'Sending...' : 'Send Notifications'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1390,38 +1371,64 @@ export const FeeManagement: React.FC = () => {
 
       {/* Generation Confirmation Modal */}
       {showGenConfirmModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px', borderRadius: '16px' }}>
-            <div className="modal-header">
-              <h2>Confirm Voucher Generation</h2>
-              <button className="icon-btn" onClick={() => setShowGenConfirmModal(false)}>×</button>
+        <div className="modal-overlay" onClick={() => setShowGenConfirmModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '540px', borderRadius: '20px', padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.15)' }}>
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Calendar size={20} color="white" />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, color: 'white', fontSize: '18px', fontWeight: 700 }}>Generate Monthly Fees</h2>
+                  <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '13px', marginTop: '2px' }}>Review and confirm before proceeding</p>
+                </div>
+              </div>
+              <button onClick={() => setShowGenConfirmModal(false)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', color: 'white', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>×</button>
             </div>
 
-            <div className="modal-body">
-              <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)', lineHeight: '1.6' }}>
-                You are about to generate fee vouchers for all active students for <strong>{new Date(billingMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}</strong> with a due date of <strong>{dueDate}</strong>.
-              </p>
+            <div style={{ padding: '24px 28px' }}>
+              {/* Summary Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #86efac' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Billing Month</div>
+                  <div style={{ fontSize: '16px', fontWeight: 700, color: '#15803d' }}>{new Date(billingMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
+                </div>
+                <div style={{ padding: '16px', background: '#fff7ed', borderRadius: '12px', border: '1px solid #fed7aa' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Due Date</div>
+                  <div style={{ fontSize: '16px', fontWeight: 700, color: '#c2410c' }}>{dueDate}</div>
+                </div>
+              </div>
+
+              {/* Fees to Include */}
+              <div style={{ padding: '16px', background: 'var(--color-surface, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border)', marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fees to Include</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {includeTuition && <span style={{ padding: '4px 12px', background: '#dbeafe', borderRadius: '20px', fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>✓ Tuition</span>}
+                  {includeTransport && <span style={{ padding: '4px 12px', background: '#dbeafe', borderRadius: '20px', fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>✓ Transport</span>}
+                  {includeAcademy && <span style={{ padding: '4px 12px', background: '#dbeafe', borderRadius: '20px', fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>✓ Academy</span>}
+                  {selectedCustomFeesToInclude.map(f => <span key={f} style={{ padding: '4px 12px', background: '#dbeafe', borderRadius: '20px', fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>✓ {f}</span>)}
+                </div>
+              </div>
 
               {genNotifyParents && (
-                <div style={{ background: '#eff6ff', padding: '16px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                  <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', color: '#1e40af' }}>
-                    <Bell size={16} /> Parent Portal Notifications Enabled
-                  </h4>
-                  <p style={{ fontSize: '13px', color: '#3b82f6', margin: 0 }}>
-                    Each parent will receive a professional fee invoice notification in their portal with the full fee breakdown, due date, and payment instructions.
+                <div style={{ padding: '14px 16px', background: '#f0f9ff', borderRadius: '12px', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Bell size={18} color="#0284c7" />
+                  <p style={{ fontSize: '13px', color: '#0c4a6e', margin: 0, lineHeight: '1.5' }}>
+                    <strong>Parent Portal Notifications Enabled</strong> — Each parent will automatically receive a fee invoice notification with the full breakdown.
                   </p>
                 </div>
               )}
-            </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button className="secondary-btn" onClick={() => setShowGenConfirmModal(false)}>Cancel</button>
-              <button
-                onClick={handleGenerate}
-                style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: 'var(--color-primary)', color: 'white', fontWeight: 600, fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-              >
-                <CheckCircle size={16} /> Confirm & Generate
-              </button>
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '20px', marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button onClick={() => setShowGenConfirmModal(false)} style={{ padding: '10px 24px', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'transparent', fontWeight: 600, fontSize: '14px', cursor: 'pointer', color: 'var(--color-text-primary)' }}>Cancel</button>
+                <button
+                  onClick={handleGenerate}
+                  style={{ padding: '10px 24px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)', color: 'white', fontWeight: 600, fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}
+                >
+                  <CheckCircle size={16} /> Confirm & Generate
+                </button>
+              </div>
             </div>
           </div>
         </div>

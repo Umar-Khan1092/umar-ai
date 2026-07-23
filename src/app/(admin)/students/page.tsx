@@ -7,8 +7,8 @@ import { BulkUploadModal } from '@/components/ui/BulkUploadModal';
 import { HighlightText } from '@/components/ui/HighlightText';
 import { formatDate } from '@/utils/formatDate';
 import { supabase, adminSupabase } from '@/lib/supabase';
-import '@/app/(admin)/students/StudentRecords.css';
-import '@/app/(admin)/classes/StudentClasses.css';
+
+
 
 interface ClassGroup {
   className: string;

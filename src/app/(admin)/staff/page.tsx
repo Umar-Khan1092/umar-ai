@@ -7,7 +7,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase, adminSupabase } from '@/lib/supabase';
 import { BulkUploadModal } from '@/components/ui/BulkUploadModal';
-import '@/app/(admin)/staff/StaffRecords.css';
+
 
 export const StaffRecords: React.FC = () => {
   const router = useRouter();

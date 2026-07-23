@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import '@/app/(admin)/settings/Settings.css';
-import '@/components/ui/Input.css';
+
+
 import { Clock, Calendar, Plus, X, Save, Edit2, LayoutGrid, LayoutList, Trash2, Upload, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { CustomTimePicker } from '@/components/ui/CustomTimePicker';
 import { supabase, adminSupabase } from '@/lib/supabase';

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { supabase, adminSupabase } from '@/lib/supabase';
-import '@/app/(admin)/fees/FeeManagement.css'; // Reuse styles
+ // Reuse styles
 
 export const StaffGeneratePayroll: React.FC = () => {
   const getCurrentMonth = () => {

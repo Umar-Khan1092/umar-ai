@@ -5,7 +5,7 @@ import { CheckCircle, Search, Clock, FileText, MessageCircle, X, AlertCircle } f
 import { HighlightText } from '@/components/ui/HighlightText';
 import { supabase, adminSupabase } from '@/lib/supabase';
 import { WhatsAppSalaryModal } from '@/components/ui/WhatsAppSalaryModal';
-import '@/app/(admin)/fees/FeeManagement.css'; // We can reuse the Fee styles
+ // We can reuse the Fee styles
 
 export const StaffSalaries: React.FC = () => {
   const [slips, setSlips] = useState<any[]>([]);

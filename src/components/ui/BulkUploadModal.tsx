@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, UploadCloud, FileType, AlertCircle } from 'lucide-react';
-import './BulkUploadModal.css';
+
 
 interface BulkUploadModalProps {
   isOpen: boolean;

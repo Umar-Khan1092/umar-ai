@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Menu, Sun, Moon } from 'lucide-react';
-import './Topbar.css';
+
 
 interface TopbarProps {
   onMenuClick?: () => void;

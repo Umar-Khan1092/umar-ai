@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { supabase } from '@/lib/supabase';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
-import './Login.css';
+
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');

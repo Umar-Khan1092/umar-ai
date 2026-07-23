@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, BookOpen, Banknote, Bell, User, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useGuardian } from '@/context/GuardianContext';
-import '@/app/(guardian)/guardian/guardianportal/GuardianPortal.css';
+
 
 export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();

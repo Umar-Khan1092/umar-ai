@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BookOpen, FileCheck, Tags, Award, LayoutTemplate, PieChart, PenTool, FileText } from 'lucide-react';
-import './StudentLayout.css';
+
 
 const academicsNavItems = [
   { name: 'Assessment Types', icon: Tags,           path: '/academics/categories',        color: '#F59E0B' },

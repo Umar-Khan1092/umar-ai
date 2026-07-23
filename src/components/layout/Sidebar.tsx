@@ -5,7 +5,7 @@ import { Home, Users, Briefcase, GraduationCap, Calendar, Settings, ChevronLeft,
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import './Sidebar.css';
+
 import { supabase } from '@/lib/supabase';
 
 interface NavItem {

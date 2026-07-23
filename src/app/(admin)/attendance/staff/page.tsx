@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Calendar, UserCheck, AlertCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import '@/app/(admin)/attendance/Attendance.css';
+
 
 export const AdminStaffAttendance: React.FC = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -67,22 +67,26 @@ export const AdminStaffAttendance: React.FC = () => {
 
       if (error) throw error;
       
-      // Notify staff if requested
+      // Notify staff with individual professional messages if requested
       if (notifyStaff) {
-        const title = "Attendance Marked";
-        const message = `Your attendance for ${date} has been marked.`;
-        
-        // We do it asynchronously in the background so it doesn't block
-        fetch('/api/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title,
-            message,
-            category: 'Attendance',
-            targetType: 'Staff',
-          })
-        }).catch(err => console.error("Failed to send staff notification:", err));
+        const dateFormatted = new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        records.forEach((r: any) => {
+          const message = r.status === 'Present'
+            ? `Dear ${r.staff_name},\n\nYour attendance was marked as Present on ${dateFormatted}. Thank you.`
+            : r.status === 'Absent'
+            ? `Dear ${r.staff_name},\n\nYour attendance was marked as Absent on ${dateFormatted}. Please contact administration if this is incorrect.`
+            : `Dear ${r.staff_name},\n\nYour leave has been recorded for ${dateFormatted}.`;
+          fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: `Attendance: ${r.status} — ${dateFormatted}`,
+              message,
+              category: 'Attendance',
+              userIds: [r.staff_id],
+            })
+          }).catch(() => {});
+        });
       }
       
       setStatusMsg({ type: 'success', message: finalize ? 'Attendance finalized successfully!' : 'Attendance saved successfully!' });

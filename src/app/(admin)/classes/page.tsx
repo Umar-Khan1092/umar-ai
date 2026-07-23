@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, GraduationCap, Search, Filter } from 'lucide-react';
-import '@/app/(admin)/classes/StudentClasses.css';
+
 import { supabase, adminSupabase } from '@/lib/supabase';
 
 interface ClassGroup {

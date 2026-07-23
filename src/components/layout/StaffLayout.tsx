@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { List, ClipboardCheck, CreditCard } from 'lucide-react';
-import './StaffLayout.css';
+
 
 const staffNavItems = [
   { name: 'Records',           icon: List,          path: '/staff',           color: '#2563EB' },

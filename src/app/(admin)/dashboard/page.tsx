@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminSupabase, supabase } from '@/lib/supabase';
-import '@/app/(admin)/dashboard/Dashboard.css';
+
 
 const db = adminSupabase || supabase;
 

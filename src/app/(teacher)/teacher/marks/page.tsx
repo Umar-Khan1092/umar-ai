@@ -6,7 +6,7 @@ import { Calendar, CheckCircle2, ChevronLeft, Search, ChevronRight, UserX, BookO
 import { motion, AnimatePresence } from 'framer-motion';
 import { RemarkModal } from '@/components/RemarkModal';
 import { supabase } from '@/lib/supabase';
-import '@/app/teacherportal/TeacherPortal.css';
+
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';

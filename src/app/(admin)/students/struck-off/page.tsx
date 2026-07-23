@@ -6,7 +6,7 @@ import { Search, Filter, MoreVertical, Edit, Download, Eye } from 'lucide-react'
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '@/lib/supabase';
-import '@/app/(admin)/students/StudentRecords.css';
+
 
 export const StruckOffStudents: React.FC = () => {
   const router = useRouter();

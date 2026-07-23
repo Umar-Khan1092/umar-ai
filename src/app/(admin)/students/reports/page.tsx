@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase, adminSupabase } from '@/lib/supabase';
 import { Filter, Users, UserPlus, UserMinus, Eye, X, TrendingUp } from 'lucide-react';
-import '@/app/(admin)/students/StudentRecords.css';
+
 
 export default function StudentReports() {
   const [students, setStudents] = useState<any[]>([]);

@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CheckSquare, FileText, UserCheck } from 'lucide-react';
-import './StudentLayout.css';
+
 
 const attendanceNavItems = [
   { name: 'Attendance Approval', icon: CheckSquare, path: '/attendance/approval', color: '#2563EB' },

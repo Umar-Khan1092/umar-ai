@@ -6,7 +6,7 @@ import { Calendar, CheckCircle2, XCircle, Clock, AlertTriangle, ChevronLeft, Sea
 import { motion, AnimatePresence } from 'framer-motion';
 import { RemarkModal } from '@/components/RemarkModal';
 import { supabase, adminSupabase } from '@/lib/supabase';
-import '@/app/teacherportal/TeacherPortal.css';
+
 
 export const TakeAttendance: React.FC = () => {
   const { user } = useAuth();

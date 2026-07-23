@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, UserCheck } from 'lucide-react';
-import '@/app/(admin)/students/StudentRecords.css';
+
 import { supabase } from '@/lib/supabase';
 
 export const PromoteStudents: React.FC = () => {

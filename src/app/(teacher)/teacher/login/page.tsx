@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Lock, User } from 'lucide-react';
-import './Login.css';
+
 import { supabase } from '@/lib/supabase';
 
 export const TeacherLogin: React.FC = () => {

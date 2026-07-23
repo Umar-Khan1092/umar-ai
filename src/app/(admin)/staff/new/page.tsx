@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
 import { supabase, adminSupabase } from '@/lib/supabase';
 import { useFormErrors } from '@/hooks/useFormErrors';
-import '@/app/registration/Registration.css';
+
 
 export const StaffRegistration: React.FC = () => {
   const router = useRouter();

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useGuardian } from '@/context/GuardianContext';
 import { User, LogOut, ChevronRight } from 'lucide-react';
-import '@/app/teacherportal/TeacherPortal.css'; // Reuse some card styles
+ // Reuse some card styles
 import { supabase } from '@/lib/supabase';
 
 export const GuardianDashboard: React.FC = () => {
