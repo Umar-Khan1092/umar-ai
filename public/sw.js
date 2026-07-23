@@ -27,11 +27,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Stale-while-revalidate for everything else
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Don't cache API requests or Supabase realtime
         if (
           event.request.url.includes('/api/') || 
           event.request.url.includes('supabase.co') || 
@@ -46,7 +44,6 @@ self.addEventListener('fetch', (event) => {
         });
         return networkResponse;
       }).catch(() => {
-        // On network failure, if it's a page navigation, return the offline page (or home)
         if (event.request.mode === 'navigate') {
           return caches.match('/');
         }
@@ -57,24 +54,54 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listen for Push Notifications
+// Listen for Push Notifications - Native WhatsApp-like behavior
 self.addEventListener('push', (event) => {
   if (event.data) {
     try {
       const data = event.data.json();
+      
+      // Update the badge count if provided
+      if (data.unreadCount !== undefined && 'setAppBadge' in navigator) {
+        // We use a promise to ensure badge sets properly
+        event.waitUntil(navigator.setAppBadge(data.unreadCount));
+      }
+
+      // Grouping tag, defaults to 'general' if not provided
+      const tag = data.tag || data.category || 'general';
+
       const options = {
         body: data.message || data.body || 'You have a new notification',
         icon: data.icon || '/logo.webp',
-        badge: '/favicon.svg',
-        vibrate: [200, 100, 200, 100, 200, 100, 200], // Distinctive vibration pattern
+        badge: '/favicon.svg', // Should ideally be a white-with-transparent-background PNG for Android status bar
+        vibrate: [200, 100, 200, 100, 200], // Distinctive vibration pattern
+        tag: tag,
+        renotify: true, // Vibrate/alert even if a notification with this tag already exists
+        requireInteraction: false, // Don't force them to dismiss it manually, let it sit in tray
         data: {
-          url: data.url || '/'
-        }
+          url: data.url || '/',
+          unreadCount: data.unreadCount
+        },
+        actions: [
+          { action: 'view', title: 'View Details' },
+          { action: 'dismiss', title: 'Dismiss' }
+        ]
       };
+      
       const title = data.title ? `EduERP: ${data.title}` : 'EduERP Notification';
+      
+      // Notify active PWA windows to update UI instantly without refresh (Real-time syncing)
       event.waitUntil(
-        self.registration.showNotification(title, options)
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsList) => {
+          for (const client of clientsList) {
+            client.postMessage({
+              type: 'PUSH_RECEIVED',
+              payload: data
+            });
+          }
+          return self.registration.showNotification(title, options);
+        })
       );
+
     } catch (e) {
       // Fallback for plain text push
       event.waitUntil(
@@ -89,22 +116,32 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const urlToOpen = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+  const clickedNotification = event.notification;
+  clickedNotification.close();
+
+  // If user clicked 'dismiss' action, just close it and do nothing else
+  if (event.action === 'dismiss') {
+    return;
+  }
+
+  const urlToOpen = (clickedNotification.data && clickedNotification.data.url) ? clickedNotification.data.url : '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window/tab open with the target URL
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        if (client.url === urlToOpen && 'focus' in client) {
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
           return client.focus();
         }
       }
-      // If not, then open the target URL in a new window/tab
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
     })
   );
+});
+
+// Clear badge when notifications are closed by the user manually
+self.addEventListener('notificationclose', (event) => {
+  // Optional: We can decrease the badge here, or leave it to the app frontend to manage on read
 });

@@ -5,6 +5,7 @@ import { Home, Users, Briefcase, GraduationCap, Calendar, Settings, ChevronLeft,
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 import { supabase } from '@/lib/supabase';
 
@@ -43,6 +44,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, items =
   const [instituteName, setInstituteName] = useState('School ERP');
   const [instituteLogo, setInstituteLogo] = useState('/logo.webp');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  
+  const { unreadCount } = useUnreadNotifications();
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -112,7 +115,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, items =
         <ul>
           {items.map((item) => {
             const Icon = item.icon;
-            const iconColor = item.color || '#94A3B8';
             
             // Highlight tabs if we are anywhere inside them
             const isActive = (item.path === '/students' && pathname.startsWith('/students')) ||
@@ -133,13 +135,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, items =
                       onToggle();
                     }
                   }}
+                  style={{ position: 'relative' }}
                 >
-                  <Icon
-                    size={20}
-                    className="nav-icon"
-                    style={{ color: isActive ? '#FFFFFF' : iconColor }}
-                  />
-                  {!isCollapsed && <span>{item.name}</span>}
+                  <Icon size={isCollapsed ? 24 : 20} style={{ 
+                        color: isActive ? '#FFF' : item.color,
+                        flexShrink: 0
+                      }} />
+                      {item.name === 'Notifications' && unreadCount > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: isCollapsed ? '6px' : '8px',
+                          left: isCollapsed ? '24px' : '26px',
+                          background: '#EF4444',
+                          color: 'white',
+                          fontSize: '10px',
+                          fontWeight: 'bold',
+                          height: '18px',
+                          minWidth: '18px',
+                          padding: '0 4px',
+                          borderRadius: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 5px rgba(239,68,68,0.4)',
+                          zIndex: 10
+                        }}>
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </div>
+                      )}{!isCollapsed && <span>{item.name}</span>}
                 </Link>
               </li>
             );

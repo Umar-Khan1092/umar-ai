@@ -4,11 +4,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Bell, Send, ArrowLeft, Search, MessageSquare, Clock, User, Check, AlertCircle, Paperclip, CheckSquare, Inbox, X, CheckCircle } from 'lucide-react';
 import { supabase, adminSupabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 type TabType = 'sent' | 'received' | 'chat' | 'compose';
 
 export default function NotificationsPage() {
   const { user } = useAuth();
+  const { markAllAsRead } = useUnreadNotifications();
   const [tab, setTab] = useState<TabType>('sent');
   const [previousTab, setPreviousTab] = useState<TabType>('sent');
 
@@ -38,6 +40,9 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     fetchData();
+    if (tab === 'received') {
+      markAllAsRead();
+    }
   }, [tab]);
 
   const fetchData = async () => {

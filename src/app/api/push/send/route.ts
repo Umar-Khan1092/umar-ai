@@ -97,7 +97,9 @@ export async function POST(req: Request) {
       title,
       message,
       url,
-      icon: '/logo.webp'
+      icon: '/logo.webp',
+      tag: category || 'general',
+      category: category || 'general'
     });
 
     const sendPromises = subscriptions.map(async (sub) => {

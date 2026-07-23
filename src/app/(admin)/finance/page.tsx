@@ -105,36 +105,7 @@ export default function FinanceDashboard() {
     };
   }, [feeData, payrollData, expenseData]);
 
-  const classSummary = useMemo(() => {
-    const classMap: Record<string, any> = {};
-    const activeStudents = studentsData.filter(s => s.status !== 'Struck Off');
 
-    activeStudents.forEach(s => {
-      if (!s.academic_class || !s.section) return;
-      const key = `${s.academic_class} - ${s.section}`;
-      if (!classMap[key]) {
-        classMap[key] = { class: s.academic_class, section: s.section, registered: 0, expected: 0, collected: 0 };
-      }
-      classMap[key].registered += 1;
-    });
-
-    feeData.forEach(f => {
-      const student = activeStudents.find(s => s.id === f.student_id);
-      if (student && student.academic_class && student.section) {
-        const key = `${student.academic_class} - ${student.section}`;
-        if (classMap[key]) {
-          classMap[key].expected += (Number(f.total_amount) || 0);
-          classMap[key].collected += (Number(f.paid_amount) || 0);
-        }
-      }
-    });
-
-    return Object.values(classMap).map(c => ({
-      ...c,
-      pending: Math.max(0, c.expected - c.collected),
-      percentage: c.expected > 0 ? ((c.collected / c.expected) * 100).toFixed(1) : '0.0'
-    })).sort((a, b) => a.class.localeCompare(b.class));
-  }, [studentsData, feeData]);
 
   const chartData = useMemo(() => {
     const map = new Map<string, { Income: number, Expenses: number, timestamp: number }>();
@@ -434,43 +405,6 @@ export default function FinanceDashboard() {
               </div>
             </div>
 
-            {/* Class-wise Finance Summary */}
-            <div style={{ background: '#FFF', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid #E2E8F0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', color: '#1E293B', fontWeight: 700 }}>Class-wise Finance Summary</h3>
-              
-              {classSummary.length === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No class data available for this period.</div>
-              ) : (
-                <div style={{ overflowX: 'auto', flexGrow: 1 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '500px' }}>
-                    <thead>
-                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                        <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>Class & Section</th>
-                        <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>Registered</th>
-                        <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>Collected</th>
-                        <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>Pending</th>
-                        <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {classSummary.map((c, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                          <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1E293B', fontSize: '14px' }}>{c.class} ({c.section})</td>
-                          <td style={{ padding: '12px 16px', color: '#64748B', fontSize: '14px' }}>{c.registered}</td>
-                          <td style={{ padding: '12px 16px', color: '#10B981', fontWeight: 600, fontSize: '14px' }}>{formatCurrency(c.collected)}</td>
-                          <td style={{ padding: '12px 16px', color: '#EF4444', fontWeight: 600, fontSize: '14px' }}>{formatCurrency(c.pending)}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{ background: Number(c.percentage) >= 90 ? '#D1FAE5' : Number(c.percentage) >= 50 ? '#FEF3C7' : '#FEE2E2', color: Number(c.percentage) >= 90 ? '#059669' : Number(c.percentage) >= 50 ? '#D97706' : '#DC2626', padding: '4px 8px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>
-                              {c.percentage}%
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* New Full-Width Financial Performance Chart */}
