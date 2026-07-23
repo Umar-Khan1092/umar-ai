@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eduerp-v7';
+const CACHE_NAME = 'eduerp-v8';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -57,65 +57,69 @@ self.addEventListener('fetch', (event) => {
 
 // Listen for Push Notifications - Native WhatsApp-like behavior
 self.addEventListener('push', (event) => {
-  if (event.data) {
+  if (!event.data) return;
+
+  const pushPromise = Promise.resolve().then(async () => {
+    let data;
     try {
-      const data = event.data.json();
-      
-      try {
-        if (data.unreadCount !== undefined && 'setAppBadge' in navigator) {
-          event.waitUntil(navigator.setAppBadge(data.unreadCount).catch(() => {}));
-        }
-      } catch (e) {
-        console.error('Badge error:', e);
-      }
-
-      // Grouping tag, defaults to 'general' if not provided
-      const tag = data.tag || data.category || 'general';
-
-      const options = {
-        body: data.message || data.body || 'You have a new notification',
-        icon: data.icon || '/logo.webp',
-        vibrate: [200, 100, 200, 100, 200], // Distinctive vibration pattern
-        silent: false, // Ensure it makes a sound/vibrates
-        tag: tag,
-        renotify: true, // Vibrate/alert even if a notification with this tag already exists
-        requireInteraction: false, // Don't force them to dismiss it manually, let it sit in tray
-        data: {
-          url: data.url || '/',
-          unreadCount: data.unreadCount
-        },
-        actions: [
-          { action: 'view', title: 'View Details' },
-          { action: 'dismiss', title: 'Dismiss' }
-        ]
-      };
-      
-      const title = data.title ? `EduERP: ${data.title}` : 'EduERP Notification';
-      
-      // Notify active PWA windows to update UI instantly without refresh (Real-time syncing)
-      event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsList) => {
-          for (const client of clientsList) {
-            client.postMessage({
-              type: 'PUSH_RECEIVED',
-              payload: data
-            });
-          }
-          return self.registration.showNotification(title, options);
-        })
-      );
-
+      data = event.data.json();
     } catch (e) {
       // Fallback for plain text push
-      event.waitUntil(
-        self.registration.showNotification('EduERP Notification', {
-          body: event.data.text(),
-          icon: '/logo.webp',
-          vibrate: [200, 100, 200]
-        })
-      );
+      return self.registration.showNotification('EduERP Notification', {
+        body: event.data.text(),
+        icon: '/logo.webp',
+        vibrate: [200, 100, 200],
+        silent: false
+      });
     }
-  }
+
+    // Set app badge count
+    try {
+      if (data.unreadCount !== undefined && 'setAppBadge' in navigator) {
+        await navigator.setAppBadge(data.unreadCount).catch(() => {});
+      }
+    } catch (e) {
+      console.error('Badge error:', e);
+    }
+
+    const tag = data.tag || data.category || 'general';
+    const options = {
+      body: data.message || data.body || 'You have a new notification',
+      icon: data.icon || '/logo.webp',
+      vibrate: [200, 100, 200, 100, 200], // Distinctive vibration pattern
+      silent: false, // Ensure it makes a sound/vibrates
+      tag: tag,
+      renotify: true, // Vibrate/alert even if a notification with this tag already exists
+      requireInteraction: false, // Don't force them to dismiss it manually, let it sit in tray
+      data: {
+        url: data.url || '/',
+        unreadCount: data.unreadCount
+      },
+      actions: [
+        { action: 'view', title: 'View Details' },
+        { action: 'dismiss', title: 'Dismiss' }
+      ]
+    };
+    
+    const title = data.title ? `EduERP: ${data.title}` : 'EduERP Notification';
+
+    // Broadcast to active windows
+    try {
+      const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of clientsList) {
+        client.postMessage({
+          type: 'PUSH_RECEIVED',
+          payload: data
+        });
+      }
+    } catch (e) {
+      console.error('Client broadcast error:', e);
+    }
+
+    return self.registration.showNotification(title, options);
+  });
+
+  event.waitUntil(pushPromise);
 });
 
 self.addEventListener('notificationclick', (event) => {
