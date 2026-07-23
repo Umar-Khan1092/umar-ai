@@ -54,7 +54,7 @@ export default function NotificationsPage() {
         setSentMessages(data || []);
       } else if (tab === 'received') {
         // Assume messages sent to Admin role or this specific user
-        const { data } = await dbClient.from('notifications').select('*').eq('role', 'Admin').order('created_at', { ascending: false }).limit(50);
+        const { data } = await dbClient.from('notifications').select('*').or('recipient_role.eq.Admin,target_role.eq.Admin').order('created_at', { ascending: false }).limit(50);
         setReceivedMessages(data || []);
       } else if (tab === 'chat') {
         // Fetch all parent-teacher communications (mocking by fetching messages categorized as Chat)
@@ -185,7 +185,7 @@ export default function NotificationsPage() {
           </p>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: '#F1F5F9', color: '#475569', fontWeight: 500 }}>
-              {isReceived ? 'From: System/User' : `To: ${Array.isArray(msg.roles) ? msg.roles.join(', ') : (typeof msg.roles === 'string' ? msg.roles : 'All')}`}
+              {isReceived ? 'From: System/User' : `To: ${Array.isArray(msg.roles) ? msg.roles.join(', ') : (typeof msg.roles === 'string' ? msg.roles : (msg.role || msg.target_role || msg.recipient_role || 'All'))}`}
             </span>
             <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: '#F0FDF4', color: '#16A34A', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Check size={12} /> Delivered

@@ -39,7 +39,8 @@ export function useUnreadNotifications() {
 
     fetchUnreadCount();
 
-    const channel = supabase.channel('public:notification_history')
+    const channelName = `unread-notifications-${user.id}-${Date.now()}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_history' }, () => {
         fetchUnreadCount();
       })

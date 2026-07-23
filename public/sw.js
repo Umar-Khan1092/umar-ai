@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eduerp-v6';
+const CACHE_NAME = 'eduerp-v7';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -31,6 +31,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (
+          !event.request.url.startsWith('http') ||
           event.request.url.includes('/api/') || 
           event.request.url.includes('supabase.co') || 
           event.request.method !== 'GET'
