@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase, adminSupabase } from '@/lib/supabase';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 
 export function useUnreadNotifications() {
   const { user } = useAuth();
