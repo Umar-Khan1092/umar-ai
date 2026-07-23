@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useGuardian } from '@/context/GuardianContext';
 import { FileSpreadsheet, Calendar, Image as ImageIcon, Send, X, User, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { triggerWebPush } from '@/lib/push';
 
 export const GuardianAcademics: React.FC = () => {
   const { activeStudent } = useGuardian();
@@ -114,10 +115,20 @@ export const GuardianAcademics: React.FC = () => {
         subject: remarkTarget.subject
       });
 
+      triggerWebPush({
+        userIds: [remarkTarget.teacher_id],
+        roles: ['Admin'],
+        title: `Remark from Parent of ${activeStudent.name}`,
+        message: remarkMessage,
+        url: '/admin-notices',
+        category: 'Chat'
+      });
+
       setRemarkMessage('');
       setIsRemarkModalOpen(false);
+      setRemarkTarget(null);
       alert('Remark sent successfully!');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       alert('Failed to send remark. Please try again.');
     } finally {

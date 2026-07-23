@@ -50,3 +50,20 @@ export const saveSubscriptionToServer = async (subscription: PushSubscription) =
   }
   return res.json();
 };
+
+export const triggerWebPush = async (payload: { userIds?: string[], roles?: string[], title: string, message: string, url: string, category?: string }) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    await fetch('/api/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ ...payload, skipHistory: true })
+    });
+  } catch (e) {
+    console.error('Failed to trigger web push', e);
+  }
+};

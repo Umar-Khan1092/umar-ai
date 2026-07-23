@@ -12,6 +12,8 @@ interface RemarkModalProps {
   subject?: string;
 }
 
+import { triggerWebPush } from '@/lib/push';
+
 export const RemarkModal: React.FC<RemarkModalProps> = ({ isOpen, onClose, studentId, studentName, context, subject }) => {
   const { user } = useAuth();
   const [remark, setRemark] = useState('');
@@ -38,6 +40,14 @@ export const RemarkModal: React.FC<RemarkModalProps> = ({ isOpen, onClose, stude
       });
 
       if (error) throw new Error(error.message);
+      
+      triggerWebPush({
+        userIds: ['parent_' + studentId],
+        title: `New Remark from Teacher (${subject || context})`,
+        message: remark,
+        url: '/guardian/guardianhome',
+        category: 'Chat'
+      });
       
       setStatus({type: 'success', message: 'Remark sent to parent successfully!'});
       setTimeout(() => {

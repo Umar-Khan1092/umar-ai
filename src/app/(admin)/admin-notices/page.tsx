@@ -101,8 +101,6 @@ export default function NotificationsPage() {
     setComposeStatus({ type: null, message: '' });
     
     try {
-      const dbClient = adminSupabase || supabase;
-      
       const payload: any = {
         title: composeForm.subject,
         message: composeForm.message,
@@ -116,8 +114,19 @@ export default function NotificationsPage() {
         payload.roles = ['Guardian'];
       }
 
-      const { error } = await dbClient.from('notification_history').insert([payload]);
-      if (error) throw error;
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to send notification');
+      }
 
       setComposeStatus({ type: 'success', message: 'Message sent successfully.' });
       setTimeout(() => {
@@ -176,7 +185,7 @@ export default function NotificationsPage() {
           </p>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: '#F1F5F9', color: '#475569', fontWeight: 500 }}>
-              {isReceived ? 'From: System/User' : `To: ${(msg.roles || []).join(', ') || 'All'}`}
+              {isReceived ? 'From: System/User' : `To: ${Array.isArray(msg.roles) ? msg.roles.join(', ') : (typeof msg.roles === 'string' ? msg.roles : 'All')}`}
             </span>
             <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: '#F0FDF4', color: '#16A34A', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Check size={12} /> Delivered

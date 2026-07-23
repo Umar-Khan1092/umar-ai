@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useGuardian } from '@/context/GuardianContext';
 import { CheckSquare, FileSpreadsheet, Banknote, Bell, Calendar, MessageCircle, Send, Users, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { triggerWebPush } from '@/lib/push';
 
 export const GuardianHome: React.FC = () => {
   const { user } = useAuth();
@@ -38,6 +39,15 @@ export const GuardianHome: React.FC = () => {
         context: 'Remarks',
         student_id: activeStudent.id
       });
+      
+      triggerWebPush({
+        roles: ['Admin'],
+        title: `Message from Parent of ${activeStudent.name}`,
+        message: adminRemark,
+        url: '/admin-notices',
+        category: 'Chat'
+      });
+      
       setAdminRemark('');
       alert('Message sent to administration successfully.');
     } catch (err: any) {

@@ -283,6 +283,31 @@ export const FeeManagement: React.FC = () => {
         for (let i = 0; i < notifications.length; i += 50) {
           await db.from('notifications').insert(notifications.slice(i, i + 50));
         }
+        
+        // ── Trigger Native Web Push ──
+        try {
+          const userIds = vouchersToInsert.map((v: any) => v.student_id).filter(Boolean);
+          if (userIds.length > 0) {
+            const authData = await supabase.auth.getSession();
+            await fetch('/api/push/send', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authData.data.session?.access_token}`
+              },
+              body: JSON.stringify({
+                userIds: userIds,
+                title: 'New Fee Invoice',
+                message: 'A new fee invoice has been generated for your child. Please check the portal.',
+                url: '/guardian/guardianfees',
+                category: 'Finance',
+                skipHistory: true
+              })
+            });
+          }
+        } catch (pushErr) {
+          console.error('Failed to trigger web push:', pushErr);
+        }
       }
 
       setGenerateMessage(`✅ Generated ${vouchersToInsert.length} vouchers for ${monthLabel}${ genNotifyParents ? ' + notifications sent to Parent Portals' : ''}.`);
@@ -416,18 +441,30 @@ export const FeeManagement: React.FC = () => {
 
       // Send receipt notification to parent portal
       if (newStatus === 'Paid') {
+        const title = `✅ Fee Confirmed — ${paymentVoucher.billing_month || 'Current Month'}`;
+        const message = `Dear Parent/Guardian,\n\nThis is to confirm that the fee payment for ${paymentVoucher.student_name} (${paymentVoucher.class_name} - ${paymentVoucher.section}) has been received.\n\n✅ Amount Paid: ₨${amount.toLocaleString()}\n📅 Payment Date: ${paymentDate}\n\nThank you for your cooperation.\n\nSchool Administration`;
         await db.from('notifications').insert({
-          title: `✅ Fee Confirmed — ${paymentVoucher.billing_month || 'Current Month'}`,
-          message: `Dear Parent/Guardian,\n\nThis is to confirm that the fee payment for ${paymentVoucher.student_name} (${paymentVoucher.class_name} - ${paymentVoucher.section}) has been received.\n\n✅ Amount Paid: ₨${amount.toLocaleString()}\n📅 Payment Date: ${paymentDate}\n\nThank you for your cooperation.\n\nSchool Administration`,
-          target_role: 'Guardian'
+          title, message, target_role: 'Guardian', student_id: paymentVoucher.student_id
         });
+        const authData = await supabase.auth.getSession();
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
+          body: JSON.stringify({ userIds: [paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', skipHistory: true })
+        }).catch(e => console.error(e));
       } else if (newStatus === 'Partial') {
-        const remaining = paymentVoucher.total_amount - newAmountPaid;
+        const remainingStr = (paymentVoucher.total_amount - newAmountPaid).toLocaleString();
+        const title = `⚠️ Partial Fee Received — ${paymentVoucher.billing_month || 'Current Month'}`;
+        const message = `Dear Parent/Guardian,\n\nWe have received a partial payment of ₨${amount.toLocaleString()} for ${paymentVoucher.student_name}.\n\n⚠️ Remaining Balance: ₨${remainingStr}\n📅 Payment Date: ${paymentDate}\n\nPlease clear the remaining balance at your earliest convenience.\n\nSchool Administration`;
         await db.from('notifications').insert({
-          title: `⚠️ Partial Payment — ${paymentVoucher.billing_month || 'Current Month'}`,
-          message: `Dear Parent/Guardian,\n\nA partial payment of ₨${amount.toLocaleString()} has been recorded for ${paymentVoucher.student_name} (${paymentVoucher.class_name} - ${paymentVoucher.section}) for ${paymentVoucher.billing_month}.\n\n💰 Paid: ₨${newAmountPaid.toLocaleString()}\n🔴 Remaining: ₨${remaining.toLocaleString()}\n📅 Payment Date: ${paymentDate}\n\nKindly clear the remaining balance at your earliest convenience.\n\nSchool Administration`,
-          target_role: 'Guardian'
+          title, message, target_role: 'Guardian', student_id: paymentVoucher.student_id
         });
+        const authData = await supabase.auth.getSession();
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
+          body: JSON.stringify({ userIds: [paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', skipHistory: true })
+        }).catch(e => console.error(e));
       }
 
       setShowPaymentModal(false);
@@ -489,6 +526,32 @@ export const FeeManagement: React.FC = () => {
         if (error) failed += Math.min(50, notifications.length - i);
         else sent += Math.min(50, notifications.length - i);
       }
+
+      // ── Trigger Native Web Push ──
+      try {
+        const userIds = targetVouchers.map((v: any) => v.student_id).filter(Boolean);
+        if (userIds.length > 0) {
+          const authData = await supabase.auth.getSession();
+          await fetch('/api/push/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authData.data.session?.access_token}`
+            },
+            body: JSON.stringify({
+              userIds: userIds,
+              title: 'New Fee Invoice',
+              message: 'A new fee invoice has been generated for your child. Please check the portal.',
+              url: '/guardian/guardianfees',
+              category: 'Finance',
+              skipHistory: true
+            })
+          });
+        }
+      } catch (pushErr) {
+        console.error('Failed to trigger web push:', pushErr);
+      }
+
       setNotifResults({ sent, failed });
     } catch (err: any) {
       alert('Failed to send notifications: ' + err.message);

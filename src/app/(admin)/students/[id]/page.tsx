@@ -5,8 +5,10 @@ import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ArrowLeft, User, BookOpen, CreditCard, Calendar, FileText, FileBadge, MessageSquare, Users, Hash, MapPin, CheckCircle } from 'lucide-react';
+import { ChevronLeft, Print, Download, Edit, Settings, AlertTriangle, MessageCircle, Send, Clock, Activity, FileSpreadsheet, Phone, Mail, Receipt, Info, Trash2, Check, ExternalLink } from 'lucide-react';
 import { formatDate } from '@/utils/formatDate';
 import { supabase, adminSupabase } from '@/lib/supabase';
+import { triggerWebPush } from '@/lib/push';
 import '@/app/(admin)/students/[id]/StudentProfile.css';
 
 export const StudentProfile: React.FC = () => {
@@ -233,6 +235,16 @@ export const StudentProfile: React.FC = () => {
         timestamp: new Date().toISOString()
       });
       if (error) throw error;
+      
+      const isToAdmin = user?.role === 'Guardian';
+      triggerWebPush({
+        roles: isToAdmin ? ['Admin'] : ['Guardian'],
+        userIds: isToAdmin ? undefined : [student.id], // Wait, for guardian the user_id is the student_id!
+        title: `Remark from ${user?.name || 'Admin'}`,
+        message: newRemark.trim(),
+        url: isToAdmin ? '/admin-notices' : '/guardian/guardianhome',
+        category: 'Chat'
+      });
       
       const { data } = await supabase.from('notifications').select('*').eq('student_id', id).order('timestamp', { ascending: true });
       if (data) setNotifications(data);

@@ -13,7 +13,7 @@ if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 
 export async function POST(req: Request) {
   try {
-    const { userIds, roles, title, message, url, category } = await req.json();
+    const { userIds, roles, title, message, url, category, skipHistory } = await req.json();
 
     // Basic Authorization check via JWT header
     const authHeader = req.headers.get('Authorization');
@@ -46,47 +46,47 @@ export async function POST(req: Request) {
     const { data: subscriptions, error: subError } = await query;
     if (subError) throw subError;
 
-    // Log the notification in history
-    // For broadcasts to roles, we just log one entry per role
-    // For specific users, we log one entry per user
-    const historyPayload: any[] = [];
-    if (userIds && userIds.length > 0) {
-      userIds.forEach((id: string) => {
+    // Log the notification in history unless skipped
+    if (!skipHistory) {
+      const historyPayload: any[] = [];
+      if (userIds && userIds.length > 0) {
+        userIds.forEach((id: string) => {
+          historyPayload.push({
+            recipient_id: id,
+            category: category || 'Announcements',
+            title,
+            message,
+            url
+          });
+        });
+      } else if (roles && roles.length > 0) {
+        roles.forEach((r: string) => {
+          historyPayload.push({
+            role: r,
+            category: category || 'Announcements',
+            title,
+            message,
+            url
+          });
+        });
+      } else {
+        // Broadcast to all
         historyPayload.push({
-          recipient_id: id,
           category: category || 'Announcements',
           title,
           message,
           url
         });
-      });
-    } else if (roles && roles.length > 0) {
-      roles.forEach((r: string) => {
-        historyPayload.push({
-          role: r,
-          category: category || 'Announcements',
-          title,
-          message,
-          url
-        });
-      });
-    } else {
-      // Broadcast to all
-      historyPayload.push({
-        category: category || 'Announcements',
-        title,
-        message,
-        url
-      });
-    }
-    
-    if (historyPayload.length > 0) {
-      // Delete notifications older than 20 days
-      const twentyDaysAgo = new Date();
-      twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20);
-      await adminSupabase.from('notification_history').delete().lt('created_at', twentyDaysAgo.toISOString());
+      }
+      
+      if (historyPayload.length > 0) {
+        // Delete notifications older than 20 days
+        const twentyDaysAgo = new Date();
+        twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20);
+        await adminSupabase.from('notification_history').delete().lt('created_at', twentyDaysAgo.toISOString());
 
-      await adminSupabase.from('notification_history').insert(historyPayload);
+        await adminSupabase.from('notification_history').insert(historyPayload);
+      }
     }
 
     if (!subscriptions || subscriptions.length === 0) {
