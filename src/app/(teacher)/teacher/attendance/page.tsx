@@ -44,7 +44,7 @@ export const TakeAttendance: React.FC = () => {
   // Fetch all attendances for the selected date for this teacher
   useEffect(() => {
     if (user?.id) {
-      supabase.from('attendance').select('*').eq('teacher_id', user.id).eq('date', selectedDate).then(res => {
+      supabase.from('student_attendance').select('*').eq('teacher_id', user.id).eq('date', selectedDate).then(res => {
         if (res.data) setGlobalAttendances(res.data);
       });
     }
@@ -134,7 +134,7 @@ export const TakeAttendance: React.FC = () => {
           .neq('status', 'Struck Off');
         if (stdData) setStudents(stdData);
         
-        let query = supabase.from('attendance').select('*')
+        let query = supabase.from('student_attendance').select('*')
           .eq('date', selectedDate)
           .eq('class_name', selectedClass)
           .eq('section', selectedSection);
@@ -202,7 +202,7 @@ export const TakeAttendance: React.FC = () => {
         status: submitToAdmin ? 'Submitted' : 'Draft'
       };
       
-      let query = supabase.from('attendance').select('id')
+      let query = supabase.from('student_attendance').select('id')
         .eq('date', selectedDate)
         .eq('class_name', selectedClass)
         .eq('section', selectedSection);
@@ -212,10 +212,10 @@ export const TakeAttendance: React.FC = () => {
       const { data: existing } = await query.maybeSingle();
       
       if (existing) {
-        const { error } = await supabase.from('attendance').update(payload).eq('id', existing.id);
+        const { error } = await supabase.from('student_attendance').update(payload).eq('id', existing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('attendance').insert(payload);
+        const { error } = await supabase.from('student_attendance').insert(payload);
         if (error) throw error;
       }
 

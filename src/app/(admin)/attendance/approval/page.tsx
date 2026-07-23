@@ -29,7 +29,7 @@ export const AdminAttendanceApproval: React.FC = () => {
     
     const subscription = supabase
       .channel('attendance_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'student_attendance' }, (payload) => {
         fetchAttendances(true);
       })
       .subscribe();
@@ -54,7 +54,7 @@ export const AdminAttendanceApproval: React.FC = () => {
   const fetchAttendances = async (background = false) => {
     if (!background) setIsLoading(true);
     try {
-      const { data: attData, error } = await supabase.from('attendance').select('*').order('date', { ascending: false });
+      const { data: attData, error } = await supabase.from('student_attendance').select('*').order('date', { ascending: false });
       if (error) throw error;
       
       const { data: staffData } = await supabase.from('staff').select('id, name');
@@ -84,7 +84,7 @@ export const AdminAttendanceApproval: React.FC = () => {
   const saveEditsAndPublish = async () => {
     setIsActionLoading(true);
     try {
-      const { error } = await supabase.from('attendance').update({
+      const { error } = await supabase.from('student_attendance').update({
         records: editedRecords,
         status: 'Published'
       }).eq('id', selectedRecord.id);
@@ -105,7 +105,7 @@ export const AdminAttendanceApproval: React.FC = () => {
   const rejectToDraft = async () => {
     setIsActionLoading(true);
     try {
-      const { error } = await supabase.from('attendance').update({ status: 'Draft' }).eq('id', selectedRecord.id);
+      const { error } = await supabase.from('student_attendance').update({ status: 'Draft' }).eq('id', selectedRecord.id);
       if (error) throw error;
       setStatusMsg({type: 'success', message: 'Attendance rejected back to Teacher.'});
       setTimeout(() => setStatusMsg({type: null, message: ''}), 3000);

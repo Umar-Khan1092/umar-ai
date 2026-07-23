@@ -56,12 +56,13 @@ export const PushNotificationManager: React.FC = () => {
     }
   };
 
-  // If they are logged in, push is supported, and they haven't explicitly denied,
-  // we could show a soft prompt UI. For now, we'll just render a small subtle banner or nothing
-  // if they are already subscribed.
-  if (!user || !isSupported || isSubscribed || permissionState === 'denied') {
+  // Show the banner if it's supported and they are not subscribed.
+  // If denied, they can click 'Enable' to see instructions or try again.
+  if (!user || !isSupported || isSubscribed) {
     return null;
   }
+  
+  const isDenied = permissionState === 'denied';
 
   return (
     <div style={{
@@ -101,23 +102,31 @@ export const PushNotificationManager: React.FC = () => {
         </div>
       </div>
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+        {!isDenied && (
+          <button 
+            onClick={() => setPermissionState('denied')} // Just hide for this session
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--color-text-secondary, #94A3B8)',
+              padding: '8px 12px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              borderRadius: '6px',
+              fontWeight: 500
+            }}
+          >
+            Not Now
+          </button>
+        )}
         <button 
-          onClick={() => setPermissionState('denied')} // Just hide for this session
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--color-text-secondary, #94A3B8)',
-            padding: '8px 12px',
-            fontSize: '13px',
-            cursor: 'pointer',
-            borderRadius: '6px',
-            fontWeight: 500
+          onClick={() => {
+            if (isDenied) {
+              alert('Notifications are blocked by your browser. Please enable them in your site settings (usually the lock icon next to the URL) and refresh the page.');
+            } else {
+              handleSubscribe();
+            }
           }}
-        >
-          Not Now
-        </button>
-        <button 
-          onClick={handleSubscribe}
           style={{
             background: '#3B82F6',
             border: 'none',
@@ -130,7 +139,7 @@ export const PushNotificationManager: React.FC = () => {
             boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
           }}
         >
-          Enable
+          {isDenied ? 'How to Enable' : 'Enable'}
         </button>
       </div>
     </div>

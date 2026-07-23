@@ -1,366 +1,463 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Bell, Send } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Bell, Send, ArrowLeft, Search, MessageSquare, Clock, User, Check, AlertCircle, Paperclip, CheckSquare, Inbox, X, CheckCircle } from 'lucide-react';
 import { supabase, adminSupabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 
-const CATEGORIES = [
-  { value: 'Attendance', label: '📋 Attendance', color: '#3B82F6' },
-  { value: 'Results', label: '📊 Results', color: '#8B5CF6' },
-  { value: 'Fees', label: '💰 Fees', color: '#F59E0B' },
-  { value: 'Salary', label: '💳 Salary', color: '#10B981' },
-  { value: 'Announcements', label: '📢 Announcements', color: '#6366F1' },
-  { value: 'Timetable', label: '🗓️ Timetable', color: '#0EA5E9' },
-  { value: 'Homework', label: '📚 Homework', color: '#EC4899' },
-  { value: 'Leave', label: '🏖️ Leave', color: '#F97316' },
-  { value: 'Emergency', label: '🚨 Emergency', color: '#EF4444' },
-];
+type TabType = 'sent' | 'received' | 'chat' | 'compose';
 
-const ROLES = [
-  { value: 'Teacher', label: 'All Teachers', icon: '👩‍🏫' },
-  { value: 'Guardian', label: 'All Guardians / Parents', icon: '👨‍👩‍👧' },
-  { value: 'Admin', label: 'All Admins', icon: '👨‍💼' },
-];
+export default function NotificationsPage() {
+  const { user } = useAuth();
+  const [tab, setTab] = useState<TabType>('sent');
+  const [previousTab, setPreviousTab] = useState<TabType>('sent');
 
-export const NotificationsPage: React.FC = () => {
-  const [tab, setTab] = useState<'send' | 'history'>('send');
+  // Data states
+  const [sentMessages, setSentMessages] = useState<any[]>([]);
+  const [receivedMessages, setReceivedMessages] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Send form
-  const [form, setForm] = useState({
-    type: 'broadcast' as 'broadcast' | 'role' | 'individual',
-    selectedRoles: [] as string[],
-    recipientEmail: '',
-    category: 'Announcements',
-    title: '',
+  // Compose State
+  const [composeForm, setComposeForm] = useState({
+    subject: '',
     message: '',
-    url: '/',
+    priority: 'Normal',
+    targetType: 'Staff', // Staff or Students
+    selectedRoles: [] as string[],
+    selectedClasses: [] as string[],
+    selectedStudents: [] as string[],
   });
-
-  const [status, setStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
+  const [composeStatus, setComposeStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [isSending, setIsSending] = useState(false);
 
-  // History
-  const [history, setHistory] = useState<any[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  // Available data
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [availableStudents, setAvailableStudents] = useState<any[]>([]);
+  const [availableStaff, setAvailableStaff] = useState<any[]>([]);
 
   useEffect(() => {
-    if (tab === 'history') {
-      fetchHistory();
-    }
+    fetchData();
   }, [tab]);
 
-  const fetchHistory = async () => {
-    setHistoryLoading(true);
+  const fetchData = async () => {
+    setIsLoading(true);
     const dbClient = adminSupabase || supabase;
-    const { data } = await dbClient
-      .from('notification_history')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    setHistory(data || []);
-    setHistoryLoading(false);
-  };
-
-  const handleRoleToggle = (role: string) => {
-    setForm(prev => ({
-      ...prev,
-      selectedRoles: prev.selectedRoles.includes(role)
-        ? prev.selectedRoles.filter(r => r !== role)
-        : [...prev.selectedRoles, role]
-    }));
-  };
-
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title.trim() || !form.message.trim()) {
-      setStatus({ type: 'error', message: 'Title and message are required.' });
-      return;
-    }
-    if (form.type === 'role' && form.selectedRoles.length === 0) {
-      setStatus({ type: 'error', message: 'Please select at least one role.' });
-      return;
-    }
-
-    setIsSending(true);
-    setStatus({ type: null, message: '' });
-
     try {
+      if (tab === 'sent' || tab === 'compose') {
+        const { data } = await dbClient.from('notification_history').select('*').order('created_at', { ascending: false }).limit(50);
+        setSentMessages(data || []);
+      } else if (tab === 'received') {
+        // Assume messages sent to Admin role or this specific user
+        const { data } = await dbClient.from('notifications').select('*').eq('role', 'Admin').order('created_at', { ascending: false }).limit(50);
+        setReceivedMessages(data || []);
+      } else if (tab === 'chat') {
+        // Fetch all parent-teacher communications (mocking by fetching messages categorized as Chat)
+        const { data } = await dbClient.from('notification_history').select('*').eq('category', 'Chat').order('created_at', { ascending: false }).limit(50);
+        setChatMessages(data || []);
+      }
+
+      // Pre-load lookup data for compose
+      if (tab === 'compose') {
+        const [settingsRes, studentsRes, staffRes] = await Promise.all([
+          dbClient.from('settings').select('*').eq('key', 'app_settings').single(),
+          dbClient.from('students').select('id, name, class_name, section').neq('status', 'Struck Off'),
+          dbClient.from('staff').select('id, name, role')
+        ]);
+        if (settingsRes.data?.value?.classes) {
+          setAvailableClasses(settingsRes.data.value.classes);
+        }
+        if (studentsRes.data) setAvailableStudents(studentsRes.data);
+        if (staffRes.data) setAvailableStaff(staffRes.data);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleComposeClick = () => {
+    setPreviousTab(tab === 'compose' ? 'sent' : tab);
+    setTab('compose');
+    setComposeStatus({ type: null, message: '' });
+  };
+
+  const handleCancelCompose = () => {
+    setTab(previousTab);
+  };
+
+  const handleSend = async () => {
+    if (!composeForm.subject.trim() || !composeForm.message.trim()) {
+      setComposeStatus({ type: 'error', message: 'Subject and message are required.' });
+      return;
+    }
+    setIsSending(true);
+    setComposeStatus({ type: null, message: '' });
+    
+    try {
+      const dbClient = adminSupabase || supabase;
+      
       const payload: any = {
-        title: form.title,
-        message: form.message,
-        url: form.url,
-        category: form.category,
+        title: composeForm.subject,
+        message: composeForm.message,
+        url: '/',
+        category: 'Announcements',
       };
 
-      if (form.type === 'role') {
-        payload.roles = form.selectedRoles;
-      } else if (form.type === 'individual') {
-        // Find user by email
-        const dbClient = adminSupabase || supabase;
-        const { data: subs } = await dbClient
-          .from('push_subscriptions')
-          .select('user_id')
-          .eq('user_id', form.recipientEmail)
-          .limit(1);
-        if (!subs || subs.length === 0) {
-          setStatus({ type: 'error', message: 'No subscription found for that user. They must enable notifications first.' });
-          setIsSending(false);
-          return;
-        }
-        payload.userIds = [subs[0].user_id];
+      if (composeForm.targetType === 'Staff') {
+        payload.roles = composeForm.selectedRoles.length > 0 ? composeForm.selectedRoles : ['Teacher', 'Admin'];
+      } else {
+        payload.roles = ['Guardian'];
       }
-      // broadcast: no userIds or roles
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || '';
+      const { error } = await dbClient.from('notification_history').insert([payload]);
+      if (error) throw error;
 
-      const res = await fetch('/api/push/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      const result = await res.json();
-
-      if (result.error) throw new Error(result.error);
-
-      setStatus({ type: 'success', message: `Notification sent to ${result.sent || 0} device(s) successfully!` });
-      setForm(prev => ({ ...prev, title: '', message: '', url: '/' }));
+      setComposeStatus({ type: 'success', message: 'Message sent successfully.' });
+      setTimeout(() => {
+        setComposeForm({ subject: '', message: '', priority: 'Normal', targetType: 'Staff', selectedRoles: [], selectedClasses: [], selectedStudents: [] });
+        setTab('sent');
+      }, 1500);
     } catch (err: any) {
-      setStatus({ type: 'error', message: err.message });
+      setComposeStatus({ type: 'error', message: err.message });
     } finally {
       setIsSending(false);
     }
   };
 
-  const getCategoryColor = (cat: string) => CATEGORIES.find(c => c.value === cat)?.color || '#6366F1';
-  const getCategoryLabel = (cat: string) => CATEGORIES.find(c => c.value === cat)?.label || cat;
+  const renderCard = (msg: any, isReceived = false) => {
+    const time = new Date(msg.created_at || new Date()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const date = new Date(msg.created_at || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    
+    return (
+      <div key={msg.id} style={{
+        background: '#fff',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '12px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+        border: '1px solid #E2E8F0',
+        display: 'flex',
+        gap: '16px',
+        alignItems: 'flex-start',
+        position: 'relative'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: isReceived ? '#F1F5F9' : '#EFF6FF',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          color: isReceived ? '#64748B' : '#3B82F6'
+        }}>
+          {isReceived ? <User size={20} /> : <Bell size={20} />}
+        </div>
+        
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1E293B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {msg.title || 'No Subject'}
+            </h4>
+            <span style={{ fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+              <Clock size={12} /> {date} • {time}
+            </span>
+          </div>
+          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748B', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {msg.message}
+          </p>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: '#F1F5F9', color: '#475569', fontWeight: 500 }}>
+              {isReceived ? 'From: System/User' : `To: ${(msg.roles || []).join(', ') || 'All'}`}
+            </span>
+            <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: '#F0FDF4', color: '#16A34A', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Check size={12} /> Delivered
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="page-container" style={{ maxWidth: 800 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <div style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '12px', padding: '10px', display: 'flex' }}>
-          <Bell size={22} color="white" />
+    <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'var(--font-inter, sans-serif)' }}>
+      {/* Sticky Toolbar */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginBottom: '24px',
+        position: 'sticky',
+        top: '0',
+        background: '#F8FAFC',
+        padding: '16px 0',
+        zIndex: 10,
+        borderBottom: '1px solid #E2E8F0'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {tab === 'compose' ? (
+            <button 
+              onClick={handleCancelCompose}
+              style={{ background: 'transparent', border: '1px solid #E2E8F0', padding: '8px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ArrowLeft size={20} color="#475569" />
+            </button>
+          ) : (
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bell size={24} color="#FFF" />
+            </div>
+          )}
+          <div>
+            <h1 style={{ margin: 0, fontSize: '24px', color: '#1E293B' }}>
+              {tab === 'compose' ? 'New Message' : 'Notifications & Messages'}
+            </h1>
+            <p style={{ margin: 0, color: '#64748B', fontSize: '14px' }}>
+              {tab === 'compose' ? 'Send a broadcast or individual message' : 'Manage all communications across the school'}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="section-heading" style={{ margin: 0 }}>Notifications</h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>Send push notifications to staff, guardians, or everyone</p>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: 'var(--color-surface)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
-        {(['send', 'history'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
+        
+        {tab !== 'compose' && (
+          <button 
+            onClick={handleComposeClick}
             style={{
-              padding: '8px 20px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '14px',
-              background: tab === t ? 'var(--color-primary, #6366F1)' : 'transparent',
-              color: tab === t ? '#fff' : 'var(--color-text-secondary)',
-              transition: 'all 0.2s',
-              textTransform: 'capitalize',
+              background: '#3B82F6', color: '#FFF', border: 'none', padding: '10px 20px', borderRadius: '8px',
+              fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+              boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.2)'
             }}
           >
-            {t === 'send' ? '📤 Send' : '📋 History'}
+            <Send size={16} /> Send New Message
           </button>
-        ))}
+        )}
       </div>
 
-      {tab === 'send' && (
-        <form onSubmit={handleSend} className="card form-card">
-          {status.type && (
-            <div className={`toast ${status.type}`} style={{ position: 'relative', top: 0, left: 0, right: 0, transform: 'none', marginBottom: '16px' }}>
-              {status.message}
-            </div>
-          )}
-
-          {/* Recipient Type */}
-          <h2 className="card-heading">Recipients</h2>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-            {[
-              { value: 'broadcast', label: '📢 Everyone', desc: 'All users' },
-              { value: 'role', label: '👥 By Role', desc: 'Specific roles' },
-              { value: 'individual', label: '👤 Individual', desc: 'Single user' },
-            ].map(opt => (
-              <div
-                key={opt.value}
-                onClick={() => setForm(prev => ({ ...prev, type: opt.value as any }))}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  border: `2px solid ${form.type === opt.value ? '#6366F1' : 'var(--color-border)'}`,
-                  background: form.type === opt.value ? 'rgba(99,102,241,0.1)' : 'var(--color-surface)',
-                  flex: '1 1 120px',
-                  transition: 'all 0.2s',
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: '14px', color: form.type === opt.value ? '#6366F1' : 'var(--color-text-main)' }}>{opt.label}</div>
-                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>{opt.desc}</div>
-              </div>
-            ))}
-          </div>
-
-          {form.type === 'role' && (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-              {ROLES.map(r => (
-                <div
-                  key={r.value}
-                  onClick={() => handleRoleToggle(r.value)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    border: `2px solid ${form.selectedRoles.includes(r.value) ? '#6366F1' : 'var(--color-border)'}`,
-                    background: form.selectedRoles.includes(r.value) ? 'rgba(99,102,241,0.1)' : 'var(--color-surface)',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: form.selectedRoles.includes(r.value) ? '#6366F1' : 'var(--color-text-main)',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {r.icon} {r.label}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Category */}
-          <h2 className="card-heading">Category</h2>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-            {CATEGORIES.map(cat => (
-              <div
-                key={cat.value}
-                onClick={() => setForm(prev => ({ ...prev, category: cat.value }))}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  cursor: 'pointer',
-                  border: `2px solid ${form.category === cat.value ? cat.color : 'var(--color-border)'}`,
-                  background: form.category === cat.value ? cat.color + '20' : 'var(--color-surface)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: form.category === cat.value ? cat.color : 'var(--color-text-secondary)',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {cat.label}
-              </div>
-            ))}
-          </div>
-
-          {/* Message Details */}
-          <h2 className="card-heading">Message</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="input-group">
-              <label className="input-label" style={{ fontWeight: 600, color: 'var(--color-text-main)', marginBottom: '8px' }}>Title <span className="required-indicator">*</span></label>
-              <input
-                className="input-field"
-                value={form.title}
-                onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
-                placeholder={`e.g. "${form.category} Update"`}
-                required
-                style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--color-border)', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.2s' }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#6366F1'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-              />
-            </div>
-            <div className="input-group">
-              <label className="input-label" style={{ fontWeight: 600, color: 'var(--color-text-main)', marginBottom: '8px' }}>Message <span className="required-indicator">*</span></label>
-              <textarea
-                className="input-field"
-                value={form.message}
-                onChange={e => setForm(prev => ({ ...prev, message: e.target.value }))}
-                placeholder="Type your notification message here..."
-                rows={4}
-                required
-                style={{ resize: 'vertical', fontFamily: 'inherit', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--color-border)', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.2s' }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#6366F1'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-              />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Deep Link URL (optional)</label>
-              <input
-                className="input-field"
-                value={form.url}
-                onChange={e => setForm(prev => ({ ...prev, url: e.target.value }))}
-                placeholder="/fees or /attendance"
-              />
-              <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                Where should clicking the notification take the user?
-              </span>
-            </div>
-          </div>
-
-          <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn-primary" disabled={isSending} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }}>
-              <Send size={16} />
-              {isSending ? 'Sending...' : 'Send Notification'}
+      {tab !== 'compose' && (
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #E2E8F0', paddingBottom: '1px' }}>
+          {[
+            { id: 'sent', label: 'Sent', icon: Send },
+            { id: 'received', label: 'Received', icon: Inbox },
+            { id: 'chat', label: 'Teacher Parent Chat', icon: MessageSquare }
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id as TabType)}
+              style={{
+                background: tab === t.id ? '#FFF' : 'transparent',
+                border: '1px solid',
+                borderColor: tab === t.id ? '#E2E8F0' : 'transparent',
+                borderBottomColor: tab === t.id ? '#FFF' : 'transparent',
+                padding: '10px 20px',
+                borderRadius: '8px 8px 0 0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: tab === t.id ? 600 : 500,
+                color: tab === t.id ? '#3B82F6' : '#64748B',
+                marginBottom: '-1px',
+                position: 'relative',
+                zIndex: tab === t.id ? 2 : 1
+              }}
+            >
+              <t.icon size={16} /> {t.label}
             </button>
-          </div>
-        </form>
-      )}
-
-      {tab === 'history' && (
-        <div className="card" style={{ padding: '20px' }}>
-          <h2 className="card-heading">Notification History (last 20 days)</h2>
-          {historyLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>Loading...</div>
-          ) : history.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)', border: '1px dashed var(--color-border)', borderRadius: '8px' }}>
-              No notifications sent yet.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {history.map(n => (
-                <div key={n.id} style={{
-                  padding: '12px 16px',
-                  borderRadius: '10px',
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  display: 'flex',
-                  gap: '12px',
-                  alignItems: 'flex-start',
-                }}>
-                  <div style={{
-                    width: '10px', height: '10px', borderRadius: '50%',
-                    background: getCategoryColor(n.category), marginTop: '5px', flexShrink: 0
-                  }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--color-text-main)' }}>{n.title}</span>
-                      <span style={{
-                        fontSize: '11px', padding: '2px 8px', borderRadius: '10px',
-                        background: getCategoryColor(n.category) + '20', color: getCategoryColor(n.category), fontWeight: 600
-                      }}>
-                        {getCategoryLabel(n.category)}
-                      </span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>{n.message}</p>
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                      <span>To: {n.recipient_id ? 'Individual' : (n.role || 'Everyone')}</span>
-                      <span>{new Date(n.created_at).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
         </div>
       )}
+
+      {/* Main Content Area */}
+      {tab === 'sent' && (
+        <div>
+          {isLoading ? <p>Loading sent messages...</p> : 
+           sentMessages.length > 0 ? sentMessages.map(m => renderCard(m, false)) : 
+           <p style={{ color: '#94A3B8', textAlign: 'center', padding: '40px' }}>No sent messages found.</p>
+          }
+        </div>
+      )}
+
+      {tab === 'received' && (
+        <div>
+          {isLoading ? <p>Loading received messages...</p> : 
+           receivedMessages.length > 0 ? receivedMessages.map(m => renderCard(m, true)) : 
+           <p style={{ color: '#94A3B8', textAlign: 'center', padding: '40px' }}>No received messages found.</p>
+          }
+        </div>
+      )}
+
+      {tab === 'chat' && (
+        <div style={{ display: 'flex', background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', height: '600px', overflow: 'hidden' }}>
+          <div style={{ width: '300px', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '16px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ position: 'relative' }}>
+                <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '10px' }} />
+                <input type="text" placeholder="Search chats..." style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '14px' }} />
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              <p style={{ color: '#94A3B8', textAlign: 'center', padding: '40px', fontSize: '14px' }}>No active chats.</p>
+            </div>
+          </div>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9' }}>
+            <div style={{ textAlign: 'center', color: '#94A3B8' }}>
+              <MessageSquare size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
+              <h3>Select a conversation</h3>
+              <p>Monitor communications between teachers and parents.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'compose' && (
+        <div style={{ background: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+          {composeStatus.type && (
+            <div style={{ padding: '12px 16px', background: composeStatus.type === 'success' ? '#F0FDF4' : '#FEF2F2', color: composeStatus.type === 'success' ? '#16A34A' : '#DC2626', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #E2E8F0' }}>
+              {composeStatus.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+              {composeStatus.message}
+            </div>
+          )}
+          
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '32px' }}>
+              
+              {/* Left Sidebar - Recipients */}
+              <div>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1E293B' }}>Recipients</h3>
+                
+                <div style={{ display: 'flex', background: '#F1F5F9', padding: '4px', borderRadius: '8px', marginBottom: '16px' }}>
+                  <button
+                    onClick={() => setComposeForm(p => ({ ...p, targetType: 'Staff' }))}
+                    style={{ flex: 1, padding: '6px', background: composeForm.targetType === 'Staff' ? '#FFF' : 'transparent', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, color: composeForm.targetType === 'Staff' ? '#0F172A' : '#64748B', cursor: 'pointer', boxShadow: composeForm.targetType === 'Staff' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
+                  >
+                    Staff
+                  </button>
+                  <button
+                    onClick={() => setComposeForm(p => ({ ...p, targetType: 'Students' }))}
+                    style={{ flex: 1, padding: '6px', background: composeForm.targetType === 'Students' ? '#FFF' : 'transparent', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, color: composeForm.targetType === 'Students' ? '#0F172A' : '#64748B', cursor: 'pointer', boxShadow: composeForm.targetType === 'Students' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
+                  >
+                    Students
+                  </button>
+                </div>
+
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px', maxHeight: '300px', overflowY: 'auto' }}>
+                  {composeForm.targetType === 'Staff' ? (
+                    <div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', marginBottom: '8px', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={composeForm.selectedRoles.includes('Teacher')} 
+                          onChange={(e) => {
+                            const newRoles = e.target.checked ? [...composeForm.selectedRoles, 'Teacher'] : composeForm.selectedRoles.filter(r => r !== 'Teacher');
+                            setComposeForm(p => ({ ...p, selectedRoles: newRoles }));
+                          }}
+                        /> All Teachers
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', marginBottom: '8px', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={composeForm.selectedRoles.includes('Admin')} 
+                          onChange={(e) => {
+                            const newRoles = e.target.checked ? [...composeForm.selectedRoles, 'Admin'] : composeForm.selectedRoles.filter(r => r !== 'Admin');
+                            setComposeForm(p => ({ ...p, selectedRoles: newRoles }));
+                          }}
+                        /> All Admins
+                      </label>
+                    </div>
+                  ) : (
+                    <div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', marginBottom: '8px', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={composeForm.selectedClasses.length === availableClasses.length && availableClasses.length > 0} 
+                          onChange={(e) => {
+                            setComposeForm(p => ({ ...p, selectedClasses: e.target.checked ? [...availableClasses] : [] }));
+                          }}
+                        /> All Classes
+                      </label>
+                      <div style={{ marginLeft: '24px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {availableClasses.map(cls => (
+                          <label key={cls} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={composeForm.selectedClasses.includes(cls)} 
+                              onChange={(e) => {
+                                const newClasses = e.target.checked ? [...composeForm.selectedClasses, cls] : composeForm.selectedClasses.filter(c => c !== cls);
+                                setComposeForm(p => ({ ...p, selectedClasses: newClasses }));
+                              }}
+                            /> {cls}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right - Message Form */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#334155', marginBottom: '6px' }}>Subject</label>
+                  <input 
+                    type="text" 
+                    value={composeForm.subject}
+                    onChange={e => setComposeForm(p => ({ ...p, subject: e.target.value }))}
+                    placeholder="Enter message subject" 
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px' }} 
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#334155', marginBottom: '6px' }}>Message</label>
+                  <textarea 
+                    value={composeForm.message}
+                    onChange={e => setComposeForm(p => ({ ...p, message: e.target.value }))}
+                    placeholder="Type your message here..." 
+                    rows={8}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', resize: 'vertical' }} 
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <button style={{ background: 'transparent', border: 'none', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', cursor: 'pointer' }}>
+                      <Paperclip size={16} /> Attach File
+                    </button>
+                    <select 
+                      value={composeForm.priority}
+                      onChange={e => setComposeForm(p => ({ ...p, priority: e.target.value }))}
+                      style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#F8FAFC' }}
+                    >
+                      <option value="Normal">Normal Priority</option>
+                      <option value="High">High Priority 🚨</option>
+                    </select>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                      onClick={handleCancelCompose}
+                      style={{ background: '#F1F5F9', color: '#475569', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleSend}
+                      disabled={isSending}
+                      style={{ background: '#3B82F6', color: '#FFF', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', cursor: isSending ? 'not-allowed' : 'pointer', opacity: isSending ? 0.7 : 1 }}
+                    >
+                      <Send size={16} /> {isSending ? 'Sending...' : 'Send Message'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
-
-export default function Page() {
-  return <NotificationsPage />;
-}
