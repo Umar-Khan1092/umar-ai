@@ -27,9 +27,12 @@ export const AdminAttendanceApproval: React.FC = () => {
   useEffect(() => {
     fetchAttendances();
     
-    const interval = setInterval(() => {
-      fetchAttendances(true);
-    }, 10000);
+    const subscription = supabase
+      .channel('attendance_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, (payload) => {
+        fetchAttendances(true);
+      })
+      .subscribe();
     
     Promise.resolve(supabase.from('settings').select('*').eq('key', 'app_settings').single())
       .then(res => { if (res.data) setSettings(res.data.value); })
@@ -43,7 +46,9 @@ export const AdminAttendanceApproval: React.FC = () => {
       .then(res => { if (res.data) setTeachers(res.data); })
       .catch((err: any) => console.error(err));
       
-    return () => clearInterval(interval);
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, []);
 
   const fetchAttendances = async (background = false) => {

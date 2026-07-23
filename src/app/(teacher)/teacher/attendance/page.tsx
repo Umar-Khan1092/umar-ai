@@ -602,10 +602,10 @@ export const TakeAttendance: React.FC = () => {
               </div>
               <div style={{ display: 'flex', flex: 1.2, justifyContent: 'flex-end' }}>
                 {isLocked ? (
-                  <div style={{ color: '#64748B', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 500 }}>
-                    <AlertTriangle size={14} />
-                    {recordStatus}
-                  </div>
+                  <button disabled style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', padding: '10px 8px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, backgroundColor: '#94A3B8', color: 'white', border: 'none', cursor: 'not-allowed', whiteSpace: 'nowrap' }}>
+                    <CheckCircle2 size={16} />
+                    Already Submitted
+                  </button>
                 ) : (
                   <button className="premium-btn" onClick={() => handleSave(true)} disabled={isSaving} style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', padding: '10px 8px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, backgroundColor: 'var(--tp-primary, #2563EB)', color: 'white', border: 'none', boxShadow: 'var(--tp-shadow-soft)', whiteSpace: 'nowrap' }}>
                     <CheckCircle2 size={16} />

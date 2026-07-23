@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, BookOpen, Users } from 'lucide-react';
@@ -38,8 +38,10 @@ export const TeacherTimetable: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState<string>('All');
 
   useEffect(() => {
+    let subscription: any = null;
+    
     if (user?.id) {
-      (async () => {
+      const fetchTimetable = async () => {
         try {
           const dbClient = adminSupabase || supabase;
           const staffRes = await dbClient.from('staff').select('id, name').ilike('username', user.email ?? '').limit(1).maybeSingle();
@@ -56,8 +58,23 @@ export const TeacherTimetable: React.FC = () => {
         } finally {
           setLoading(false);
         }
-      })();
+      };
+      
+      fetchTimetable();
+      
+      subscription = supabase
+        .channel('timetable_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable' }, () => {
+          fetchTimetable();
+        })
+        .subscribe();
     }
+    
+    return () => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
   }, [user]);
 
   if (loading) {
@@ -145,25 +162,41 @@ export const TeacherTimetable: React.FC = () => {
                       <BookOpen size={16} color={color.text} />
                     </div>
                   </div>
-                  {periods.map((period, i) => {
-                    period.days.sort((d1, d2) => DAYS.indexOf(d1) - DAYS.indexOf(d2));
-                    const daysDisplay = period.days.length === DAYS.length ? 'Full Week' : period.days.map(d => DAY_ABBR[d] || d).join(', ');
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 20px', borderBottom: i < periods.length - 1 ? '1px solid #F1F5F9' : 'none', backgroundColor: i % 2 === 0 ? '#FFFFFF' : '#FAFBFC' }}>
-                        <div style={{ width: '34px', height: '34px', borderRadius: '9px', backgroundColor: color.light, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: color.text }}>{period.subject.slice(0, 3).toUpperCase()}</span>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#1E293B' }}>{period.subject}</p>
-                          <p style={{ margin: '1px 0 0 0', fontSize: '12px', color: '#94A3B8' }}>{daysDisplay}</p>
-                        </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: color.text }}>{formatTime(period.start_time)}</p>
-                          <p style={{ margin: '1px 0 0 0', fontSize: '11px', color: '#94A3B8' }}>to {formatTime(period.end_time)}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="data-table" style={{ margin: 0, borderTop: 'none', width: '100%', minWidth: '500px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ backgroundColor: 'rgba(248, 250, 252, 0.5)', padding: '12px 16px', borderBottom: '1px solid #E2E8F0', color: '#475569', fontWeight: 600, textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subject</th>
+                          <th style={{ backgroundColor: 'rgba(248, 250, 252, 0.5)', padding: '12px 16px', borderBottom: '1px solid #E2E8F0', color: '#475569', fontWeight: 600, textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Time</th>
+                          <th style={{ backgroundColor: 'rgba(248, 250, 252, 0.5)', padding: '12px 16px', borderBottom: '1px solid #E2E8F0', color: '#475569', fontWeight: 600, textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Days</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {periods.map((period, i) => {
+                          period.days.sort((d1, d2) => DAYS.indexOf(d1) - DAYS.indexOf(d2));
+                          const daysDisplay = period.days.length === DAYS.length ? 'Full Week' : period.days.map(d => DAY_ABBR[d] || d).join(', ');
+                          return (
+                            <tr key={i} style={{ borderBottom: i < periods.length - 1 ? '1px solid #F1F5F9' : 'none', backgroundColor: i % 2 === 0 ? '#FFFFFF' : '#FAFBFC' }}>
+                              <td style={{ padding: '12px 16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div style={{ width: '30px', height: '30px', borderRadius: '8px', backgroundColor: color.light, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, color: color.text }}>{period.subject.slice(0, 3).toUpperCase()}</span>
+                                  </div>
+                                  <span style={{ fontWeight: 600, color: '#1E293B', fontSize: '14px' }}>{period.subject}</span>
+                                </div>
+                              </td>
+                              <td style={{ padding: '12px 16px', color: '#475569', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                {formatTime(period.start_time)} - {formatTime(period.end_time)}
+                              </td>
+                              <td style={{ padding: '12px 16px', color: '#64748B', fontSize: '13px' }}>
+                                {daysDisplay}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               );
             })}

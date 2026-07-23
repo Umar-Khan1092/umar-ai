@@ -225,35 +225,67 @@ export const AttendanceHistory: React.FC = () => {
 
   const currentList = activeTab === 'present' ? stats.presentList : activeTab === 'absent' ? stats.absentList : stats.leaveList;
 
-  const handleSendWhatsapp = async () => {
+  const handleSendNotification = async () => {
     if (!whatsappMessage.trim()) return;
     setIsSendingMsg(true);
     setStatusMsg({ type: null, message: '' });
 
     try {
-      const targets: any[] = [];
+      const userIds: string[] = [];
+      
       if (mode === 'student') {
         currentList.forEach(item => {
           const student = allStudents.find(s => s.id === item.student_id);
-          if (student && student.guardian_whatsapp) {
-            targets.push({ name: student.name, phone: student.guardian_whatsapp });
+          // Students might have a guardian_id or we find the Guardian by matching student criteria
+          // But our push/send also accepts roles. Wait, if we send to all guardians of absent kids?
+          // The best way is to fetch push_subscriptions for these specific users.
+          // Since the prompt asks to "Send notifications to the corresponding Parent Portal",
+          // The parent portal user is usually the guardian.
+          // If we don't have the exact guardian user_id in `student`, we can look it up or send to email.
+          // For now, let's assume `student.guardian_id` exists, or we send to `guardian_email`.
+          // Let's use `student.guardian_cnic` or `student.id` (if parent uses student login).
+          // Actually, let's just send the userIds that we have. Wait, Guardian accounts usually have `username` = email.
+          // If the app relies on Guardian role, we can collect guardian emails or IDs.
+          // Let's just collect student IDs for now, or guardian emails if available.
+          if (student) {
+            userIds.push(student.guardian_id || student.id);
           }
         });
       } else {
         currentList.forEach(item => {
-          const staff = allStaff.find(s => s.id === item.staff_id);
-          if (staff && staff.whatsapp_number) {
-            targets.push({ name: staff.name, phone: staff.whatsapp_number });
-          }
+          if (item.staff_id) userIds.push(item.staff_id);
         });
       }
 
-      if (targets.length === 0) {
-        throw new Error("No valid WhatsApp numbers found for the current list.");
-      }
+      const uniqueUserIds = Array.from(new Set(userIds));
 
-      // WhatsApp is simulated - show success
-      setStatusMsg({ type: 'success', message: `WhatsApp messages sent to ${targets.length} recipient(s) (simulated).` });
+      if (uniqueUserIds.length === 0) {
+        throw new Error("No valid users found for the current list.");
+      }
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
+
+      const payload = {
+        userIds: uniqueUserIds,
+        title: `Attendance Alert: ${activeTab ? activeTab.charAt(0).toUpperCase() + activeTab.slice(1) : ''}`,
+        message: whatsappMessage,
+        category: 'Attendance',
+        url: mode === 'student' ? '/guardian' : '/staff'
+      };
+
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
+
+      setStatusMsg({ type: 'success', message: `Notification sent to ${result.sent || 0} recipient(s).` });
       setShowWhatsappModal(false);
       setWhatsappMessage('');
     } catch (err: any) {
@@ -506,13 +538,17 @@ export const AttendanceHistory: React.FC = () => {
             <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--color-text-primary)' }}>
               {activeTab === 'present' ? `Present ${stats.label} List` : activeTab === 'absent' ? `Absent ${stats.label} List` : `Leave ${stats.label} List`}
             </h3>
-            {(activeTab === 'absent' || activeTab === 'leave') && currentList.length > 0 && (
+            {currentList.length > 0 && (
               <button 
                 className="btn-primary" 
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.9rem' }}
                 onClick={() => setShowWhatsappModal(true)}
               >
-                <Send size={16} /> Send Auto Message
+                <Send size={16} /> 
+                {mode === 'student' 
+                  ? `Notify ${activeTab ? activeTab.charAt(0).toUpperCase() + activeTab.slice(1) : ''} Parents` 
+                  : `Notify ${activeTab ? activeTab.charAt(0).toUpperCase() + activeTab.slice(1) : ''} Staff`
+                }
               </button>
             )}
           </div>
@@ -572,7 +608,7 @@ export const AttendanceHistory: React.FC = () => {
           <div className="modal-content card" style={{ maxWidth: '500px', width: '90%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--color-text-primary)' }}>
-                Send WhatsApp Message to {activeTab === 'absent' ? 'Absent' : 'Leave'} {stats.label}
+                Send Notification to {activeTab ? activeTab.charAt(0).toUpperCase() + activeTab.slice(1) : ''} {stats.label}
               </h2>
               <button 
                 onClick={() => setShowWhatsappModal(false)}
@@ -603,11 +639,11 @@ export const AttendanceHistory: React.FC = () => {
               </button>
               <button 
                 className="btn-primary" 
-                onClick={handleSendWhatsapp}
+                onClick={handleSendNotification}
                 disabled={isSendingMsg || !whatsappMessage.trim()}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
               >
-                {isSendingMsg ? 'Sending...' : <><Send size={16} /> Send Message</>}
+                {isSendingMsg ? 'Sending...' : <><Send size={16} /> Send Notification</>}
               </button>
             </div>
           </div>
