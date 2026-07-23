@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eduerp-v8';
+const CACHE_NAME = 'eduerp-v9';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -57,16 +57,24 @@ self.addEventListener('fetch', (event) => {
 
 // Listen for Push Notifications - Native WhatsApp-like behavior
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
+  console.log('[Service Worker] Push event received.');
+  
+  if (!event.data) {
+    console.log('[Service Worker] Push event received but had no data.');
+    return;
+  }
 
   const pushPromise = Promise.resolve().then(async () => {
     let data;
     try {
       data = event.data.json();
+      console.log('[Service Worker] Parsed push payload JSON:', data);
     } catch (e) {
-      // Fallback for plain text push
+      console.warn('[Service Worker] Push payload is not JSON. Falling back to plain text:', e);
+      const text = event.data.text();
+      console.log('[Service Worker] Raw text:', text);
       return self.registration.showNotification('EduERP Notification', {
-        body: event.data.text(),
+        body: text,
         icon: '/logo.webp',
         vibrate: [200, 100, 200],
         silent: false
@@ -76,10 +84,13 @@ self.addEventListener('push', (event) => {
     // Set app badge count
     try {
       if (data.unreadCount !== undefined && 'setAppBadge' in navigator) {
-        await navigator.setAppBadge(data.unreadCount).catch(() => {});
+        console.log('[Service Worker] Setting app badge to:', data.unreadCount);
+        await navigator.setAppBadge(data.unreadCount).catch((err) => {
+          console.error('[Service Worker] Failed to set app badge:', err);
+        });
       }
     } catch (e) {
-      console.error('Badge error:', e);
+      console.error('[Service Worker] Badge error:', e);
     }
 
     const tag = data.tag || data.category || 'general';
@@ -102,10 +113,12 @@ self.addEventListener('push', (event) => {
     };
     
     const title = data.title ? `EduERP: ${data.title}` : 'EduERP Notification';
+    console.log('[Service Worker] Displaying notification:', title, options);
 
     // Broadcast to active windows
     try {
       const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      console.log('[Service Worker] Active window clients found:', clientsList.length);
       for (const client of clientsList) {
         client.postMessage({
           type: 'PUSH_RECEIVED',
@@ -113,10 +126,15 @@ self.addEventListener('push', (event) => {
         });
       }
     } catch (e) {
-      console.error('Client broadcast error:', e);
+      console.error('[Service Worker] Client broadcast error:', e);
     }
 
-    return self.registration.showNotification(title, options);
+    try {
+      await self.registration.showNotification(title, options);
+      console.log('[Service Worker] showNotification completed successfully.');
+    } catch (err) {
+      console.error('[Service Worker] Failed to show notification:', err);
+    }
   });
 
   event.waitUntil(pushPromise);
