@@ -256,7 +256,7 @@ export default function ExpenseManagement() {
                       </td>
                       <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <button onClick={() => { setEditingExpense(expense); setShowAddModal(true); }} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#64748B', cursor: 'pointer' }}>
+                          <button onClick={() => handleOpenModal(expense)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#64748B', cursor: 'pointer' }}>
                             <Edit size={16} />
                           </button>
                         </div>
