@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eduerp-v5';
+const CACHE_NAME = 'eduerp-v6';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -75,6 +75,7 @@ self.addEventListener('push', (event) => {
         body: data.message || data.body || 'You have a new notification',
         icon: data.icon || '/logo.webp',
         vibrate: [200, 100, 200, 100, 200], // Distinctive vibration pattern
+        silent: false, // Ensure it makes a sound/vibrates
         tag: tag,
         renotify: true, // Vibrate/alert even if a notification with this tag already exists
         requireInteraction: false, // Don't force them to dismiss it manually, let it sit in tray

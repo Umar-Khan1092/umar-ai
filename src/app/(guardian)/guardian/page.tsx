@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useGuardian } from '@/context/GuardianContext';
-import { User, LogOut, ChevronRight } from 'lucide-react';
+import { User, LogOut, ChevronRight, CheckCircle2, Bell } from 'lucide-react';
  // Reuse some card styles
 import { supabase } from '@/lib/supabase';
 
@@ -14,9 +14,16 @@ export const GuardianDashboard: React.FC = () => {
   const router = useRouter();
   const [students, setStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [permission, setPermission] = useState<string>('default');
   
   const [instituteName, setInstituteName] = useState('');
   const [instituteLogo, setInstituteLogo] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPermission(Notification.permission);
+    }
+  }, []);
 
   useEffect(() => {
     if (user?.role === 'Guardian') {
@@ -70,7 +77,33 @@ export const GuardianDashboard: React.FC = () => {
       </div>
 
       <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '24px', color: 'var(--color-text-main)' }}>Welcome, {user?.name || 'Guardian'}!</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            Welcome, {user?.name || 'Guardian'}!
+            {permission === 'granted' && (
+              <span style={{ color: '#16A34A', display: 'inline-flex', alignItems: 'center' }} title="Notifications Enabled">
+                <CheckCircle2 size={22} fill="#16A34A" color="#FFFFFF" />
+              </span>
+            )}
+          </h2>
+          {permission !== 'granted' && (
+            <button 
+              onClick={() => {
+                if (typeof window !== 'undefined' && 'Notification' in window) {
+                  Notification.requestPermission().then(p => {
+                    setPermission(p);
+                    if (p === 'granted') {
+                      window.location.reload();
+                    }
+                  });
+                }
+              }} 
+              style={{ background: '#10B981', border: 'none', color: '#FFF', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 4px rgba(16,185,129,0.2)', transition: 'all 0.2s ease' }}
+            >
+              <Bell size={14} /> Allow Notifications
+            </button>
+          )}
+        </div>
         <p style={{ marginBottom: '24px', color: 'var(--color-text-muted)' }}>Select a student below to view their profile, academic records, and attendance.</p>
         
         {isLoading ? (

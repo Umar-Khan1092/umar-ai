@@ -109,7 +109,12 @@ export async function POST(req: Request) {
       };
       
       try {
-        await webpush.sendNotification(pushSubscription, payload);
+        await webpush.sendNotification(pushSubscription, payload, {
+          headers: {
+            'Urgency': 'high'
+          },
+          TTL: 86400
+        });
       } catch (err: any) {
         if (err.statusCode === 410 || err.statusCode === 404) {
           // Subscription has expired or is no longer valid, remove it

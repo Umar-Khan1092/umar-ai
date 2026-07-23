@@ -128,22 +128,28 @@ export const GuardianHome: React.FC = () => {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-        <h1 style={{ fontSize: '24px', color: '#1E293B', margin: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
+        <h1 style={{ fontSize: '24px', color: '#1E293B', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
           Welcome {user?.name || 'Guardian'}
+          {permission === 'granted' && (
+            <span style={{ color: '#16A34A', display: 'inline-flex', alignItems: 'center' }} title="Notifications Enabled">
+              <CheckCircle2 size={22} fill="#16A34A" color="#FFFFFF" />
+            </span>
+          )}
         </h1>
-        {permission === 'granted' ? (
-          <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, background: '#F0FDF4', padding: '4px 8px', borderRadius: '12px' }} title="Notifications Enabled">
-            <CheckCircle2 size={16} /> <span style={{ display: 'none' }}>Enabled</span>
-          </span>
-        ) : (
+        {permission !== 'granted' && (
           <button 
             onClick={() => {
               if (typeof window !== 'undefined' && 'Notification' in window) {
-                Notification.requestPermission().then(p => setPermission(p));
+                Notification.requestPermission().then(p => {
+                  setPermission(p);
+                  if (p === 'granted') {
+                    window.location.reload();
+                  }
+                });
               }
             }} 
-            style={{ background: '#3B82F6', border: 'none', color: '#FFF', padding: '6px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+            style={{ background: '#10B981', border: 'none', color: '#FFF', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 4px rgba(16,185,129,0.2)', transition: 'all 0.2s ease' }}
           >
             <Bell size={14} /> Allow Notifications
           </button>

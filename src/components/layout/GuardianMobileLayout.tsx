@@ -44,7 +44,7 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
   }
 
   const navItems = [
-    { id: 'home', icon: Home, label: 'Home', path: '/guardian/guardianhome' },
+    { id: 'home', icon: Home, label: 'Home', path: '/guardian/guardianhome', altPath: '/guardian/home' },
     { id: 'academics', icon: BookOpen, label: 'Academics', path: '/guardian/guardianacademics' },
     { id: 'fees', icon: Banknote, label: 'Fees', path: '/guardian/guardianfees' },
     { id: 'notifications', icon: Bell, label: 'Notices', path: '/guardian/guardiannotifications' },
@@ -96,7 +96,7 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
       {/* Bottom Navigation */}
       <div className="guardian-bottom-nav">
         {navItems.map(item => {
-          const isActive = pathname.includes(item.path);
+          const isActive = pathname.startsWith(item.path) || (item.altPath && pathname.startsWith(item.altPath));
           const Icon = item.icon;
           return (
             <div 
@@ -105,12 +105,14 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
               onClick={() => router.push(item.path)}
               style={{
                 background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                color: isActive ? '#38BDF8' : '#64748B',
+                color: isActive ? '#38BDF8' : 'rgba(255, 255, 255, 0.6)',
                 borderRadius: '12px',
-                padding: '8px 4px'
+                padding: '8px 4px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}
             >
-              <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+              <Icon size={24} strokeWidth={isActive ? 2.5 : 2} style={{ color: isActive ? '#38BDF8' : 'rgba(255, 255, 255, 0.6)' }} />
               <span>{item.label}</span>
             </div>
           );
@@ -120,7 +122,7 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
       {/* Child Switcher Dropdown */}
       {showSwitcher && (
         <>
-          <div className="guardian-sheet-overlay" style={{ background: 'transparent', backdropFilter: 'none' }} onClick={() => setShowSwitcher(false)}></div>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'transparent', zIndex: 1000 }} onClick={() => setShowSwitcher(false)}></div>
           <div style={{ position: 'absolute', top: '65px', left: '16px', backgroundColor: '#FFFFFF', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', width: '280px', zIndex: 1001, border: '1px solid #E2E8F0', padding: '8px' }}>
             <h3 style={{ margin: '8px 12px 12px 12px', fontSize: '14px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Select Student</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
