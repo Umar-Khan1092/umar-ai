@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Home, Users, Briefcase, GraduationCap, Calendar, Settings, ChevronLeft, Menu, CreditCard, Bell } from 'lucide-react';
+import { Home, Users, Briefcase, GraduationCap, Calendar, Settings, ChevronLeft, Menu, CreditCard, Bell, BarChart3, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -25,6 +25,8 @@ const adminNavItems: NavItem[] = [
   { name: 'Dashboard',          icon: Home,          path: '/dashboard',     color: '#2563EB' },
   { name: 'Student Management', icon: Users,          path: '/students',      color: '#7C3AED' },
   { name: 'Fee Management',     icon: CreditCard,    path: '/fees', color: '#059669' },
+  { name: 'Finance',            icon: BarChart3,     path: '/finance', color: '#14B8A6' },
+  { name: 'Expenses',           icon: Receipt,       path: '/finance/expenses', color: '#F97316' },
   { name: 'Staff',              icon: Briefcase,     path: '/staff',         color: '#F59E0B' },
   { name: 'Academics',          icon: GraduationCap, path: '/academics',     color: '#0891B2' },
   { name: 'Attendance',         icon: Calendar,      path: '/attendance',    color: '#16A34A' },
