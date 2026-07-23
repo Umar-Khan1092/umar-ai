@@ -71,45 +71,52 @@ export const TakeAttendance: React.FC = () => {
     return { total, present, absent, leave };
   };
 
-  // Fetch classes and sections from attendance duties
+  // Fetch classes and sections from the timetable (where teacher is assigned)
   useEffect(() => {
     if (user?.role === 'Teacher' && user.email) {
       (async () => {
         // Use adminSupabase (service role) to bypass RLS when reading settings/staff
         const dbClient = adminSupabase || supabase;
-        const staffRes = await dbClient.from('staff').select('id').ilike('username', user.email).limit(1).maybeSingle();
-        const staffId = staffRes.data?.id || user.id;
         
-        console.log('Teacher Staff ID:', staffId);
         try {
-          const res = await dbClient.from('settings').select('*').eq('key', 'attendance_settings').maybeSingle();
-          console.log('Settings Data:', res.data);
-          if (res.data && res.data.value) {
-            let allSettings: any[] = [];
-            if (typeof res.data.value === 'string') {
-              try { allSettings = JSON.parse(res.data.value); } catch(e) {}
-            } else if (Array.isArray(res.data.value)) {
-              allSettings = res.data.value;
-            }
-            
-            if (!Array.isArray(allSettings)) allSettings = [];
-            console.log('Parsed All Attendance Settings:', allSettings);
-            const myDuties = allSettings.filter(s => String(s.incharge_teacher_id) === String(staffId));
-            console.log('My Filtered Duties:', myDuties);
-            
+          // Look up staff record by email (case-insensitive)
+          const staffRes = await dbClient.from('staff').select('id').ilike('username', user.email ?? '').limit(1).maybeSingle();
+          const staffId = staffRes.data?.id || user.id;
+          
+          console.log('Teacher Staff ID:', staffId);
+          
+          // Read assigned classes directly from timetable
+          const ttRes = await dbClient
+            .from('timetable')
+            .select('academic_class, section, subject')
+            .eq('teacher_id', staffId);
+          
+          console.log('Timetable entries:', ttRes.data);
+          
+          if (ttRes.data && ttRes.data.length > 0) {
+            // Build unique class+section duties (for daily incharge attendance)
             const uniqueDuties: any[] = [];
-            const seen = new Set();
-            for (const duty of myDuties) {
-              const key = `${duty.class_name}-${duty.section}`;
+            const seen = new Set<string>();
+            for (const entry of ttRes.data) {
+              // Each unique class+section is a duty
+              const key = `${entry.academic_class}-${entry.section}`;
               if (!seen.has(key)) {
                 seen.add(key);
-                uniqueDuties.push(duty);
+                uniqueDuties.push({
+                  class_name: entry.academic_class,
+                  section: entry.section,
+                  incharge_teacher_id: staffId
+                });
               }
             }
+            console.log('Unique duties from timetable:', uniqueDuties);
             setDuties(uniqueDuties);
+          } else {
+            console.log('No timetable entries found for teacher');
+            setDuties([]);
           }
         } catch (err) {
-          console.error('Error fetching settings:', err);
+          console.error('Error fetching timetable duties:', err);
         }
       })();
     }
@@ -155,9 +162,10 @@ export const TakeAttendance: React.FC = () => {
 
   const isValidSelection = () => {
     if (user?.role === 'Teacher') {
-      return duties.some(d => d.class_name === selectedClass && d.section === selectedSection && (d.subject || '') === selectedSubject);
+      // Check if teacher is assigned to this class+section in the timetable
+      return duties.some(d => d.class_name === selectedClass && d.section === selectedSection);
     }
-    return true; // Admin/Guardian can select anything available via API
+    return true;
   };
 
   const isLocked = recordStatus === 'Submitted' || recordStatus === 'Published';

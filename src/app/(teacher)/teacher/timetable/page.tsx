@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Clock, BookOpen, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { formatTime } from '@/utils/formatDate';
-import { supabase } from '@/lib/supabase';
+import { supabase, adminSupabase } from '@/lib/supabase';
 
 interface TimetableEntry {
   id: string;
@@ -19,23 +19,36 @@ interface TimetableEntry {
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_ABBR: Record<string, string> = {
+  Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed',
+  Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat'
+};
+const CLASS_COLORS = [
+  { bg: '#EFF6FF', border: '#3B82F6', text: '#1D4ED8', light: '#DBEAFE' },
+  { bg: '#FDF4FF', border: '#A855F7', text: '#7C3AED', light: '#F3E8FF' },
+  { bg: '#F0FDF4', border: '#22C55E', text: '#15803D', light: '#DCFCE7' },
+  { bg: '#FFF7ED', border: '#F97316', text: '#C2410C', light: '#FFEDD5' },
+  { bg: '#FFF1F2', border: '#F43F5E', text: '#BE123C', light: '#FFE4E6' },
+];
 
 export const TeacherTimetable: React.FC = () => {
   const { user } = useAuth();
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<string>('All');
 
   useEffect(() => {
     if (user?.id) {
       (async () => {
         try {
-          const staffRes = await supabase.from('staff').select('id').eq('username', user.email).limit(1).maybeSingle();
-          if (!staffRes.data) return;
-
-          const res = await supabase.from('timetable').select('*').eq('teacher_id', staffRes.data.id);
-          const mapped = (res.data || []).map(t => ({
+          const dbClient = adminSupabase || supabase;
+          const staffRes = await dbClient.from('staff').select('id, name').ilike('username', user.email ?? '').limit(1).maybeSingle();
+          if (!staffRes.data) { setLoading(false); return; }
+          const res = await dbClient.from('timetable').select('*').eq('teacher_id', staffRes.data.id);
+          const mapped = (res.data || []).map((t: any) => ({
             ...t,
-            class_name: t.academic_class
+            class_name: t.academic_class,
+            teacher_name: staffRes.data!.name
           }));
           setTimetable(mapped);
         } catch (err) {
@@ -48,175 +61,114 @@ export const TeacherTimetable: React.FC = () => {
   }, [user]);
 
   if (loading) {
-    return <div className="page-content">Loading your timetable...</div>;
+    return (
+      <div className="teacher-page" style={{ paddingBottom: '80px' }}>
+        {[1, 2, 3].map(i => (
+          <div key={i} style={{ height: '100px', backgroundColor: '#F1F5F9', borderRadius: '16px', marginBottom: '12px', opacity: 0.6 }} />
+        ))}
+      </div>
+    );
   }
 
-  const hasClasses = timetable.length > 0;
+  const classSectionMap: Record<string, TimetableEntry[]> = {};
+  timetable.forEach(entry => {
+    const key = `${entry.class_name}||${entry.section}`;
+    if (!classSectionMap[key]) classSectionMap[key] = [];
+    classSectionMap[key].push(entry);
+  });
+
+  const activeDays = DAYS.filter(d => timetable.some(e => e.day === d));
 
   return (
     <div className="teacher-page" style={{ paddingBottom: '80px' }}>
-      <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>My Timetable</h2>
-      {!hasClasses ? (
-        <div style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', textAlign: 'center', padding: '60px', color: '#94A3B8', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))' }}>
+      <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>My Timetable</h2>
+      <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#64748B' }}>Your assigned classes and periods</p>
+
+      {timetable.length === 0 ? (
+        <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', textAlign: 'center', padding: '60px 24px', color: '#94A3B8', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #E2E8F0' }}>
           <Calendar size={48} style={{ opacity: 0.2, margin: '0 auto 16px' }} />
-          <h3>You don't have any periods scheduled yet.</h3>
-          <p>Please contact the Admin to arrange your timetable.</p>
+          <h3 style={{ margin: '0 0 8px 0', color: '#475569' }}>No Classes Assigned</h3>
+          <p style={{ margin: 0, fontSize: '14px' }}>Please contact the Admin to assign you to classes in the Timetable.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-          {(() => {
-            // 1. Group by Class + Section
-            const sectionSchedules: Record<string, TimetableEntry[]> = {};
-            timetable.forEach(entry => {
-              const key = `${entry.class_name}|${entry.section}`;
-              if (!sectionSchedules[key]) sectionSchedules[key] = [];
-              sectionSchedules[key].push(entry);
-            });
-
-            // 2. Generate Signatures
-            const sectionSignatures = Object.entries(sectionSchedules).map(([key, entries]) => {
-              const [cls, sec] = key.split('|');
-              // Sort deterministically to create a stable signature
-              const sortedEntries = [...entries].sort((a, b) => 
-                a.day.localeCompare(b.day) || 
-                a.start_time.localeCompare(b.start_time) || 
-                a.subject.localeCompare(b.subject)
-              );
-              const sig = sortedEntries.map(e => `${e.day}_${e.start_time}_${e.end_time}_${e.subject}_${e.teacher_id}`).join('|');
-              return { cls, sec, entries: sortedEntries, sig };
-            });
-
-            // 3. Merge identical sections
-            type MergedGroup = { cls: string, sections: string[], entries: TimetableEntry[], all_entry_ids: string[] };
-            const groupedBySignature: Record<string, MergedGroup> = {};
-            sectionSignatures.forEach(({ cls, sec, entries, sig }) => {
-              const key = `${cls}::${sig}`;
-              if (!groupedBySignature[key]) {
-                groupedBySignature[key] = { cls, sections: [], entries, all_entry_ids: [] }; 
-              }
-              groupedBySignature[key].sections.push(sec);
-              groupedBySignature[key].all_entry_ids.push(...entries.map(e => e.id));
-            });
-
-            const mergedGroups = Object.values(groupedBySignature).sort((a, b) => a.cls.localeCompare(b.cls) || a.sections[0].localeCompare(b.sections[0]));
-
-            if (mergedGroups.length === 0) {
-              return (
-                <div style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', textAlign: 'center', padding: '60px', color: '#94A3B8', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))' }}>
-                  <Calendar size={48} style={{ opacity: 0.2, margin: '0 auto 16px' }} />
-                  <h3>No timetable entries found.</h3>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            {[
+              { icon: <BookOpen size={18} color="#3B82F6" />, bg: '#DBEAFE', label: 'Classes', value: Object.keys(classSectionMap).length, color: '#EFF6FF' },
+              { icon: <Clock size={18} color="#22C55E" />, bg: '#DCFCE7', label: 'Periods', value: timetable.length, color: '#F0FDF4' },
+              { icon: <Users size={18} color="#A855F7" />, bg: '#F3E8FF', label: 'Days/Week', value: activeDays.length, color: '#FDF4FF' },
+            ].map((stat, i) => (
+              <div key={i} style={{ backgroundColor: stat.color, borderRadius: '12px', padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: stat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{stat.icon}</div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#64748B', fontWeight: 500 }}>{stat.label}</p>
+                  <p style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>{stat.value}</p>
                 </div>
-              );
-            }
+              </div>
+            ))}
+          </div>
 
-            const cardColors = ['#E0F2FE', '#FCE7F3', '#FEF3C7', '#DCFCE7', '#F3E8FF'];
-            const borderColors = ['#38BDF8', '#F472B6', '#FBBF24', '#4ADE80', '#C084FC'];
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', marginBottom: '20px' }}>
+            {['All', ...activeDays].map(day => (
+              <button key={day} onClick={() => setSelectedDay(day)} style={{ padding: '6px 16px', borderRadius: '20px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', backgroundColor: selectedDay === day ? '#3B82F6' : '#F1F5F9', color: selectedDay === day ? '#FFFFFF' : '#475569', transition: 'all 0.2s', flexShrink: 0 }}>
+                {day === 'All' ? 'All Days' : DAY_ABBR[day] || day}
+              </button>
+            ))}
+          </div>
 
-            return mergedGroups.map((group, idx) => {
-              const themeColor = cardColors[idx % cardColors.length];
-              const borderColor = borderColors[idx % borderColors.length];
-              const uniqueTeachers = Array.from(new Set(group.entries.map(e => e.teacher_id)));
-              const isModel1 = uniqueTeachers.length === 1 && group.entries.length >= 6; // Rough check for full week/model 1
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {Object.entries(classSectionMap).map(([key, entries], idx) => {
+              const [cls, sec] = key.split('||');
+              const color = CLASS_COLORS[idx % CLASS_COLORS.length];
+              const dayEntries = selectedDay === 'All' ? entries : entries.filter(e => e.day === selectedDay);
+              if (dayEntries.length === 0) return null;
 
-              const minStartTime = group.entries.reduce((min, e) => e.start_time < min ? e.start_time : min, group.entries[0].start_time);
-              const maxEndTime = group.entries.reduce((max, e) => e.end_time > max ? e.end_time : max, group.entries[0].end_time);
-              const uniqueDays = Array.from(new Set(group.entries.map(e => e.day)));
-              const daysText = uniqueDays.length === DAYS.length ? 'Full Week' : uniqueDays.join(', ');
+              const periodMap: Record<string, { subject: string; start_time: string; end_time: string; days: string[] }> = {};
+              dayEntries.forEach(e => {
+                const pKey = `${e.subject}|${e.start_time}|${e.end_time}`;
+                if (!periodMap[pKey]) periodMap[pKey] = { subject: e.subject, start_time: e.start_time, end_time: e.end_time, days: [] };
+                if (!periodMap[pKey].days.includes(e.day)) periodMap[pKey].days.push(e.day);
+              });
+              const periods = Object.values(periodMap).sort((a, b) => a.start_time.localeCompare(b.start_time));
 
               return (
-                <div key={idx} style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', padding: '0', overflow: 'hidden', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))', border: '1px solid #E2E8F0', borderLeft: `5px solid ${borderColor}` }}>
-                  <div style={{ backgroundColor: themeColor, padding: '16px', borderBottom: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column' }}>
+                <div key={key} style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderLeft: `5px solid ${color.border}` }}>
+                  <div style={{ backgroundColor: color.bg, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '12px', fontWeight: 600 }}>
-                        <span>Class {group.cls} <span style={{ color: '#475569', fontSize: '1rem', fontWeight: 'normal' }}>({group.sections.sort().join(', ')})</span></span>
+                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>
+                        Class {cls}
+                        <span style={{ marginLeft: '8px', fontSize: '12px', fontWeight: 600, backgroundColor: color.light, color: color.text, padding: '2px 10px', borderRadius: '20px' }}>Section {sec}</span>
                       </h3>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748B' }}>{periods.length} period{periods.length !== 1 ? 's' : ''}{selectedDay !== 'All' ? ` on ${selectedDay}` : ' assigned'}</p>
                     </div>
-                    {isModel1 && (
-                      <div style={{ display: 'flex', gap: '12px', marginTop: '12px', fontSize: '0.9rem', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '1 1 100%' }}><span style={{ color: '#475569' }}>Class Teacher:</span> <span style={{ fontWeight: 600, color: '#0F172A' }}>{group.entries[0].teacher_name}</span></div>
-                        <div style={{ flex: '1 1 45%' }}><span style={{ color: '#475569', display: 'block', marginBottom: '2px' }}>Timing:</span> <span style={{ fontWeight: 600, color: '#0F172A' }}>{formatTime(minStartTime)}<br/>{formatTime(maxEndTime)}</span></div>
-                        <div style={{ flex: '1 1 45%' }}><span style={{ color: '#475569', display: 'block', marginBottom: '2px' }}>Days:</span> <span style={{ fontWeight: 600, color: '#0F172A' }}>{daysText}</span></div>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: color.light, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <BookOpen size={16} color={color.text} />
+                    </div>
+                  </div>
+                  {periods.map((period, i) => {
+                    period.days.sort((d1, d2) => DAYS.indexOf(d1) - DAYS.indexOf(d2));
+                    const daysDisplay = period.days.length === DAYS.length ? 'Full Week' : period.days.map(d => DAY_ABBR[d] || d).join(', ');
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 20px', borderBottom: i < periods.length - 1 ? '1px solid #F1F5F9' : 'none', backgroundColor: i % 2 === 0 ? '#FFFFFF' : '#FAFBFC' }}>
+                        <div style={{ width: '34px', height: '34px', borderRadius: '9px', backgroundColor: color.light, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: color.text }}>{period.subject.slice(0, 3).toUpperCase()}</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#1E293B' }}>{period.subject}</p>
+                          <p style={{ margin: '1px 0 0 0', fontSize: '12px', color: '#94A3B8' }}>{daysDisplay}</p>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: color.text }}>{formatTime(period.start_time)}</p>
+                          <p style={{ margin: '1px 0 0 0', fontSize: '11px', color: '#94A3B8' }}>to {formatTime(period.end_time)}</p>
+                        </div>
                       </div>
-                    )}
-                  </div>
-
-                  {isModel1 ? (
-                    <div style={{ padding: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                      <h4 style={{ margin: '0 0 12px 0', color: '#475569', fontSize: '1rem', fontWeight: 600 }}>Timetable</h4>
-                      <table className="data-table" style={{ margin: 0, width: '100%', borderCollapse: 'collapse', minWidth: '400px' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ backgroundColor: 'rgba(248, 250, 252, 0.5)', padding: '12px 8px', borderBottom: '1px solid #E2E8F0', color: '#475569', fontWeight: 600, textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section</th>
-                            {Array.from(new Set(group.entries.map(e => e.subject))).sort().map(sub => (
-                              <th key={sub} style={{ backgroundColor: 'rgba(248, 250, 252, 0.5)', padding: '12px 8px', borderBottom: '1px solid #E2E8F0', color: '#475569', fontWeight: 600, textAlign: 'center', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{sub}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.sections.sort().map(sec => (
-                            <tr key={sec} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                              <td style={{ padding: '12px 8px', fontWeight: 500, color: '#1E293B' }}>{sec}</td>
-                              {Array.from(new Set(group.entries.map(e => e.subject))).sort().map(sub => (
-                                <td key={sub} style={{ padding: '12px 8px', textAlign: 'center', color: 'var(--tp-primary, #2563EB)' }}>✓</td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                      <table className="data-table" style={{ margin: 0, borderTop: 'none', width: '100%', borderCollapse: 'collapse', minWidth: '300px' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ backgroundColor: 'rgba(248, 250, 252, 0.5)', padding: '12px 16px', borderBottom: '1px solid #E2E8F0', color: '#475569', fontWeight: 600, textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subject</th>
-                            <th style={{ backgroundColor: 'rgba(248, 250, 252, 0.5)', padding: '12px 16px', borderBottom: '1px solid #E2E8F0', color: '#475569', fontWeight: 600, textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Time</th>
-                            <th style={{ backgroundColor: 'rgba(248, 250, 252, 0.5)', padding: '12px 16px', borderBottom: '1px solid #E2E8F0', color: '#475569', fontWeight: 600, textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Days</th>
-                          </tr>
-                        </thead>
-                      <tbody>
-                        {(() => {
-                          const compressed: Record<string, { subject: string, start_time: string, end_time: string, days: string[] }> = {};
-                          
-                          group.entries.forEach(period => {
-                            const key = `${period.subject}|${period.start_time}|${period.end_time}`;
-                            if (!compressed[key]) {
-                              compressed[key] = {
-                                subject: period.subject,
-                                start_time: period.start_time,
-                                end_time: period.end_time,
-                                days: []
-                              };
-                            }
-                            if (!compressed[key].days.includes(period.day)) {
-                              compressed[key].days.push(period.day);
-                            }
-                          });
-
-                          return Object.values(compressed)
-                            .sort((a, b) => a.start_time.localeCompare(b.start_time) || a.subject.localeCompare(b.subject))
-                            .map((period, i) => {
-                              period.days.sort((d1, d2) => DAYS.indexOf(d1) - DAYS.indexOf(d2));
-                              const daysDisplay = period.days.length === DAYS.length ? 'Full Week' : period.days.join(', ');
-
-                              return (
-                                <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1E293B', fontSize: '13px' }}>{period.subject}</td>
-                                  <td style={{ padding: '12px 16px', color: '#475569', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatTime(period.start_time)} - {formatTime(period.end_time)}</td>
-                                  <td style={{ padding: '12px 16px', color: '#64748B', fontSize: '13px' }}>{daysDisplay}</td>
-                                </tr>
-                              );
-                            });
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
-                  )}
+                    );
+                  })}
                 </div>
               );
-            });
-          })()}
-        </div>
+            })}
+          </div>
+        </>
       )}
     </div>
   );

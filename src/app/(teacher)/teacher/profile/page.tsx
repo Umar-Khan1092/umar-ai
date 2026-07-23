@@ -180,7 +180,7 @@ export const TeacherProfile: React.FC = () => {
             <div style={{ color: '#64748B', marginTop: '2px' }}><Mail size={18} /></div>
             <div style={{ flex: 1 }}>
               <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>Email</p>
-              <p style={{ margin: '2px 0 0 0', fontSize: '15px', fontWeight: 500, color: '#1E293B' }}>{staff.email || 'N/A'}</p>
+              <p style={{ margin: '2px 0 0 0', fontSize: '15px', fontWeight: 500, color: '#1E293B' }}>{staff.email || staff.username || 'N/A'}</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
@@ -213,7 +213,7 @@ export const TeacherProfile: React.FC = () => {
             <div style={{ color: '#64748B', marginTop: '2px' }}><Calendar size={18} /></div>
             <div style={{ flex: 1 }}>
               <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>Joining Date</p>
-              <p style={{ margin: '2px 0 0 0', fontSize: '15px', fontWeight: 500, color: '#1E293B' }}>{staff.joining_date ? new Date(staff.joining_date).toLocaleDateString() : 'N/A'}</p>
+              <p style={{ margin: '2px 0 0 0', fontSize: '15px', fontWeight: 500, color: '#1E293B' }}>{(staff.join_date || staff.joining_date) ? new Date(staff.join_date || staff.joining_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>

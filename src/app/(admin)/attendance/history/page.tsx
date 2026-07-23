@@ -85,19 +85,37 @@ export const AttendanceHistory: React.FC = () => {
       .then(res => { if (res.data) setAllStudents(res.data); })
       .catch((err: any) => console.error(err));
 
-    // Staff Attendance
-    Promise.resolve(supabase.from('staff_attendance').select('*'))
-      .then(res => { if (res.data) setStaffSessions(res.data); })
-      .catch((err: any) => console.error(err));
-
-    // Staff List for roles
+    // Staff + Staff Attendance - fetch together so we can build sessions
     Promise.resolve(supabase.from('staff').select('*'))
-      .then(res => {
-        if (res.data) {
-          setAllStaff(res.data);
-          const uniqueRoles = Array.from(new Set(res.data.map((s: any) => s.role).filter(Boolean))) as string[];
-          setRoles(uniqueRoles);
-        }
+      .then(staffRes => {
+        const staffList = staffRes.data || [];
+        setAllStaff(staffList);
+        const uniqueRoles = Array.from(new Set(staffList.map((s: any) => s.role).filter(Boolean))) as string[];
+        setRoles(uniqueRoles);
+        
+        // Now fetch staff_attendance flat rows and group into sessions
+        return supabase.from('staff_attendance').select('*').then(attRes => {
+          const rows = attRes.data || [];
+          // Group flat rows by date -> build session objects
+          const byDate: Record<string, any[]> = {};
+          rows.forEach((row: any) => {
+            if (!byDate[row.date]) byDate[row.date] = [];
+            const staffMember = staffList.find((s: any) => s.id === row.staff_id);
+            byDate[row.date].push({
+              staff_id: row.staff_id,
+              staff_name: staffMember?.name || 'Unknown',
+              role: staffMember?.role || 'Unknown',
+              status: row.status
+            });
+          });
+          
+          const sessions = Object.entries(byDate).map(([date, records]) => ({
+            date,
+            is_finalized: true,
+            records
+          }));
+          setStaffSessions(sessions);
+        });
       })
       .catch((err: any) => console.error(err));
   }, []);
