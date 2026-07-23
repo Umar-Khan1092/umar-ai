@@ -9,6 +9,7 @@ export const PromoteStudents: React.FC = () => {
   const [students, setStudents] = useState<any[]>([]);
   const [settingsClasses, setSettingsClasses] = useState<string[]>([]);
   const [settingsSections, setSettingsSections] = useState<string[]>([]);
+  const [classSections, setClassSections] = useState<Record<string, string[]>>({});
   
   // Selections
   const [currentClass, setCurrentClass] = useState('');
@@ -37,6 +38,7 @@ export const PromoteStudents: React.FC = () => {
         const data = res.data?.value || {};
         setSettingsClasses(data.classes || []);
         setSettingsSections(data.sections || []);
+        setClassSections(data.class_sections || {});
         setSchoolEndClass(data.school_end_class || '');
         setClassPromotions(data.class_promotions || {});
       })
@@ -163,7 +165,7 @@ export const PromoteStudents: React.FC = () => {
             <div className="form-group" style={{ flex: 1 }}>
               <label>Sections (Select multiple)</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '12px', padding: '12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-button)', backgroundColor: 'var(--color-background)' }}>
-                {settingsSections.map(s => (
+                {(currentClass && classSections[currentClass] ? classSections[currentClass] : settingsSections).map(s => (
                   <label key={s} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.9rem' }}>
                     <input 
                       type="checkbox" 
@@ -176,7 +178,7 @@ export const PromoteStudents: React.FC = () => {
                     {s}
                   </label>
                 ))}
-                {settingsSections.length === 0 && <span className="body-text" style={{fontSize: '0.8rem'}}>No sections found.</span>}
+                {(!currentClass || !(classSections[currentClass] || settingsSections).length) && <span className="body-text" style={{fontSize: '0.8rem'}}>No sections found.</span>}
               </div>
             </div>
           </div>
@@ -202,7 +204,7 @@ export const PromoteStudents: React.FC = () => {
               <select className="input-field" value={targetSection} onChange={e => setTargetSection(e.target.value)}>
                 <option value="">-- Select Section --</option>
                 <option value="Completed" style={{fontWeight: 'bold', color: 'var(--color-primary)'}}>Completed</option>
-                {settingsSections.map(s => <option key={s} value={s}>{s}</option>)}
+                {(targetClass && classSections[targetClass] ? classSections[targetClass] : settingsSections).map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
