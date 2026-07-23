@@ -5,7 +5,7 @@ import { supabase, adminSupabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Search, Plus, Filter, Calendar, Edit, Trash2, Receipt, ArrowUpDown, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
-const EXPENSE_TYPES = ['Electricity', 'Internet', 'Stationery', 'Maintenance', 'Transport', 'Salary Advance', 'Other'];
+const EXPENSE_TYPES = ['Electricity', 'Internet', 'Stationery', 'Maintenance', 'Transport', 'Salary Advance', 'Repairs', 'Other'];
 
 export default function ExpenseManagement() {
   const { user } = useAuth();
