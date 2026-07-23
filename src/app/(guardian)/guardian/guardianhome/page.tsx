@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useGuardian } from '@/context/GuardianContext';
-import { CheckSquare, FileSpreadsheet, Banknote, Bell, Calendar, MessageCircle, Send, Users } from 'lucide-react';
+import { CheckSquare, FileSpreadsheet, Banknote, Bell, Calendar, MessageCircle, Send, Users, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export const GuardianHome: React.FC = () => {
@@ -15,6 +15,13 @@ export const GuardianHome: React.FC = () => {
   const [adminRemark, setAdminRemark] = useState('');
   const [sendingAdminRemark, setSendingAdminRemark] = useState(false);
   const [, setRecentActivity] = useState<any[]>([]);
+  const [permission, setPermission] = useState<string>('default');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPermission(Notification.permission);
+    }
+  }, []);
 
   const handleSendAdminRemark = async () => {
     if (!adminRemark.trim() || !activeStudent) return;
@@ -111,9 +118,27 @@ export const GuardianHome: React.FC = () => {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
-      <h1 style={{ fontSize: '24px', color: '#1E293B', margin: '0 0 8px 0' }}>
-        Welcome {user?.name || 'Guardian'}
-      </h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <h1 style={{ fontSize: '24px', color: '#1E293B', margin: 0 }}>
+          Welcome {user?.name || 'Guardian'}
+        </h1>
+        {permission === 'granted' ? (
+          <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, background: '#F0FDF4', padding: '4px 8px', borderRadius: '12px' }} title="Notifications Enabled">
+            <CheckCircle2 size={16} /> <span style={{ display: 'none' }}>Enabled</span>
+          </span>
+        ) : (
+          <button 
+            onClick={() => {
+              if (typeof window !== 'undefined' && 'Notification' in window) {
+                Notification.requestPermission().then(p => setPermission(p));
+              }
+            }} 
+            style={{ background: '#3B82F6', border: 'none', color: '#FFF', padding: '6px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+          >
+            <Bell size={14} /> Allow Notifications
+          </button>
+        )}
+      </div>
       <p style={{ color: '#64748B', margin: '0 0 16px 0', fontSize: '14px' }}>
         Here is the latest update for {activeStudent?.name || 'your child'}.
       </p>

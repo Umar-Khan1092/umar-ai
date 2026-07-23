@@ -44,11 +44,11 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
   }
 
   const navItems = [
-    { id: 'home', icon: Home, label: 'Home', path: '/guardian/home' },
-    { id: 'academics', icon: BookOpen, label: 'Academics', path: '/guardian/academics' },
-    { id: 'fees', icon: Banknote, label: 'Fees', path: '/guardian/fees' },
-    { id: 'notifications', icon: Bell, label: 'Notices', path: '/guardian/notifications' },
-    { id: 'profile', icon: User, label: 'Profile', path: '/guardian/profile' }
+    { id: 'home', icon: Home, label: 'Home', path: '/guardian/guardianhome' },
+    { id: 'academics', icon: BookOpen, label: 'Academics', path: '/guardian/guardianacademics' },
+    { id: 'fees', icon: Banknote, label: 'Fees', path: '/guardian/guardianfees' },
+    { id: 'notifications', icon: Bell, label: 'Notices', path: '/guardian/guardiannotifications' },
+    { id: 'profile', icon: User, label: 'Profile', path: '/guardian/guardianprofile' }
   ];
 
   return (
@@ -105,6 +105,7 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
               onClick={() => router.push(item.path)}
               style={{
                 background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                color: isActive ? '#38BDF8' : '#64748B',
                 borderRadius: '12px',
                 padding: '8px 4px'
               }}
@@ -119,7 +120,7 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
       {/* Child Switcher Dropdown */}
       {showSwitcher && (
         <>
-          <div className="guardian-sheet-overlay" style={{ background: 'transparent' }} onClick={() => setShowSwitcher(false)}></div>
+          <div className="guardian-sheet-overlay" style={{ background: 'transparent', backdropFilter: 'none' }} onClick={() => setShowSwitcher(false)}></div>
           <div style={{ position: 'absolute', top: '65px', left: '16px', backgroundColor: '#FFFFFF', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', width: '280px', zIndex: 1001, border: '1px solid #E2E8F0', padding: '8px' }}>
             <h3 style={{ margin: '8px 12px 12px 12px', fontSize: '14px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Select Student</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
