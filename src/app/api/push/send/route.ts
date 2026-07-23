@@ -34,11 +34,68 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'VAPID keys not configured' }, { status: 500 });
     }
 
+    // Resolve any student/staff/parent IDs to their corresponding push subscription user IDs
+    let resolvedUserIds: string[] = [];
+    if (userIds && userIds.length > 0) {
+      resolvedUserIds = [...userIds];
+      
+      const studentIdsToLookup: string[] = [];
+      const staffIdsToLookup: string[] = [];
+
+      userIds.forEach((id: string) => {
+        if (id.startsWith('parent_')) {
+          studentIdsToLookup.push(id.replace('parent_', ''));
+        } else {
+          studentIdsToLookup.push(id);
+          staffIdsToLookup.push(id);
+        }
+      });
+
+      // 1. Resolve student IDs to their guardian_id (parent Auth ID)
+      if (studentIdsToLookup.length > 0) {
+        const { data: studentRecords } = await adminSupabase
+          .from('students')
+          .select('id, guardian_id')
+          .in('id', studentIdsToLookup);
+        
+        if (studentRecords) {
+          studentRecords.forEach((s: any) => {
+            if (s.guardian_id) {
+              resolvedUserIds.push(s.guardian_id);
+            }
+          });
+        }
+      }
+
+      // 2. Resolve staff IDs to their Auth user_id via username (email)
+      if (staffIdsToLookup.length > 0) {
+        const { data: staffRecords } = await adminSupabase
+          .from('staff')
+          .select('id, username')
+          .in('id', staffIdsToLookup);
+        
+        if (staffRecords && staffRecords.length > 0) {
+          const emails = staffRecords.map((s: any) => s.username).filter(Boolean);
+          if (emails.length > 0) {
+            // Fetch auth users to map their emails to auth IDs
+            const { data: authUsers } = await adminSupabase.auth.admin.listUsers();
+            if (authUsers && authUsers.users) {
+              authUsers.users.forEach((u: any) => {
+                if (u.email && emails.includes(u.email)) {
+                  resolvedUserIds.push(u.id);
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+
     // Build the query to get subscriptions
     let query = adminSupabase.from('push_subscriptions').select('*');
     
     if (userIds && userIds.length > 0) {
-      query = query.in('user_id', userIds);
+      query = query.in('user_id', resolvedUserIds);
     } else if (roles && roles.length > 0) {
       query = query.in('role', roles);
     }

@@ -21,6 +21,18 @@ export async function POST(req: Request) {
       if (user) {
         userId = user.id;
         role = user.user_metadata?.role || 'User';
+        
+        // Map Teacher/Staff auth user to their staff table primary key
+        if (role === 'Teacher' || role === 'Staff') {
+          const { data: staffMember } = await adminSupabase
+            .from('staff')
+            .select('id')
+            .eq('username', user.email || '')
+            .maybeSingle();
+          if (staffMember) {
+            userId = staffMember.id;
+          }
+        }
       }
     }
 
