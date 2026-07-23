@@ -67,81 +67,39 @@ export const PushNotificationManager: React.FC = () => {
   return (
     <div style={{
       position: 'fixed',
-      bottom: '20px',
-      left: '20px',
-      right: '20px',
+      top: '12px',
+      right: '120px',
       zIndex: 9999,
-      maxWidth: '400px',
-      backgroundColor: 'var(--color-surface, #1E293B)',
-      color: 'var(--color-text-heading, #F8FAFC)',
-      padding: '16px',
-      borderRadius: '12px',
-      boxShadow: 'var(--shadow-premium, 0 10px 25px -5px rgba(0,0,0,0.5))',
       display: 'flex',
-      flexDirection: 'column',
-      gap: '12px',
-      border: '1px solid var(--color-border, #334155)'
+      alignItems: 'center'
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-        <div style={{
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          padding: '10px',
-          borderRadius: '50%',
+      <button 
+        onClick={() => {
+          if (isDenied) {
+            alert('Notifications are blocked by your browser. Please enable them in your site settings (usually the lock icon next to the URL) and refresh the page.');
+          } else {
+            handleSubscribe();
+          }
+        }}
+        style={{
+          background: '#3B82F6',
+          border: 'none',
+          color: '#FFFFFF',
+          padding: '8px 16px',
+          fontSize: '13px',
+          cursor: 'pointer',
+          borderRadius: '20px',
+          fontWeight: 600,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          color: '#3B82F6'
-        }}>
-          🔔
-        </div>
-        <div>
-          <h4 style={{ margin: '0 0 4px 0', fontSize: '15px' }}>Enable Notifications</h4>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary, #94A3B8)', lineHeight: 1.4 }}>
-            Get instant updates on attendance, fees, and school announcements even when the app is closed.
-          </p>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-        {!isDenied && (
-          <button 
-            onClick={() => setPermissionState('denied')} // Just hide for this session
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--color-text-secondary, #94A3B8)',
-              padding: '8px 12px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              borderRadius: '6px',
-              fontWeight: 500
-            }}
-          >
-            Not Now
-          </button>
-        )}
-        <button 
-          onClick={() => {
-            if (isDenied) {
-              alert('Notifications are blocked by your browser. Please enable them in your site settings (usually the lock icon next to the URL) and refresh the page.');
-            } else {
-              handleSubscribe();
-            }
-          }}
-          style={{
-            background: '#3B82F6',
-            border: 'none',
-            color: '#FFFFFF',
-            padding: '8px 16px',
-            fontSize: '13px',
-            cursor: 'pointer',
-            borderRadius: '6px',
-            fontWeight: 600,
-            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
-          }}
-        >
-          {isDenied ? 'How to Enable' : 'Enable'}
-        </button>
-      </div>
+          gap: '8px',
+          boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        <span style={{ fontSize: '14px' }}>🔔</span>
+        {isDenied ? 'Notifications Blocked' : 'Enable Notifications'}
+      </button>
     </div>
   );
 };

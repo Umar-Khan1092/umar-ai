@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eduerp-v1';
+const CACHE_NAME = 'eduerp-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

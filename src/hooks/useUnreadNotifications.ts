@@ -31,7 +31,7 @@ export function useUnreadNotifications() {
         
         setUnreadCount(count);
 
-        if ('setAppBadge' in navigator) {
+        if (typeof navigator !== 'undefined' && 'setAppBadge' in navigator) {
           navigator.setAppBadge(count).catch(() => {});
         }
       }
@@ -51,13 +51,13 @@ export function useUnreadNotifications() {
       }
     };
 
-    if ('serviceWorker' in navigator) {
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
     }
 
     return () => {
       supabase.removeChannel(channel);
-      if ('serviceWorker' in navigator) {
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
         navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
       }
     };
@@ -68,8 +68,8 @@ export function useUnreadNotifications() {
     const dbClient = adminSupabase || supabase;
     await dbClient.rpc('mark_all_notifications_read', { u_id: user.id });
     setUnreadCount(0);
-    if ('clearAppBadge' in navigator) {
-      navigator.clearAppBadge().catch(() => {});
+    if (typeof navigator !== 'undefined' && 'clearAppBadge' in (navigator as any)) {
+      (navigator as any).clearAppBadge().catch(() => {});
     }
   };
 
