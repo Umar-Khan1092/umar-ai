@@ -30,7 +30,7 @@ const adminNavItems: NavItem[] = [
   { name: 'Academics',          icon: GraduationCap, path: '/academics',     color: '#0891B2' },
   { name: 'Attendance',         icon: Calendar,      path: '/attendance',    color: '#16A34A' },
   { name: 'Timetable',          icon: Calendar,      path: '/timetable',     color: '#9333EA' },
-  { name: 'Notifications',      icon: Bell,          path: '/notifications', color: '#F43F5E' },
+  { name: 'Notifications',      icon: Bell,          path: '/admin-notices', color: '#F43F5E' },
   { name: 'Expense Management', icon: Receipt,       path: '/finance/expenses', color: '#F97316' },
   { name: 'Finance',            icon: BarChart3,     path: '/finance', color: '#14B8A6' },
   { name: 'Settings',           icon: Settings,      path: '/settings',      color: '#94A3B8' },

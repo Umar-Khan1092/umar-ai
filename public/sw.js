@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eduerp-v3';
+const CACHE_NAME = 'eduerp-v5';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -60,10 +60,12 @@ self.addEventListener('push', (event) => {
     try {
       const data = event.data.json();
       
-      // Update the badge count if provided
-      if (data.unreadCount !== undefined && 'setAppBadge' in navigator) {
-        // We use a promise to ensure badge sets properly
-        event.waitUntil(navigator.setAppBadge(data.unreadCount));
+      try {
+        if (data.unreadCount !== undefined && 'setAppBadge' in navigator) {
+          event.waitUntil(navigator.setAppBadge(data.unreadCount).catch(() => {}));
+        }
+      } catch (e) {
+        console.error('Badge error:', e);
       }
 
       // Grouping tag, defaults to 'general' if not provided
@@ -72,7 +74,6 @@ self.addEventListener('push', (event) => {
       const options = {
         body: data.message || data.body || 'You have a new notification',
         icon: data.icon || '/logo.webp',
-        badge: '/favicon.svg', // Should ideally be a white-with-transparent-background PNG for Android status bar
         vibrate: [200, 100, 200, 100, 200], // Distinctive vibration pattern
         tag: tag,
         renotify: true, // Vibrate/alert even if a notification with this tag already exists
