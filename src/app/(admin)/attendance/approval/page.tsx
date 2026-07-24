@@ -71,9 +71,34 @@ export const AdminAttendanceApproval: React.FC = () => {
     }
   };
 
-  const openRecord = (record: any) => {
+  const openRecord = async (record: any) => {
     setSelectedRecord(record);
-    setEditedRecords([...record.records]);
+    setEditedRecords([...(record.records || [])]);
+
+    try {
+      const studentIds = (record.records || []).map((r: any) => r.student_id);
+      if (studentIds.length > 0) {
+        const { data: studentsData } = await supabase
+          .from('students')
+          .select('id, name, father_name, roll_number')
+          .in('id', studentIds);
+          
+        if (studentsData && studentsData.length > 0) {
+          const enriched = (record.records || []).map((r: any) => {
+            const student = studentsData.find((s: any) => s.id === r.student_id);
+            return {
+              ...r,
+              student_name: r.student_name || student?.name || 'N/A',
+              father_name: r.father_name || student?.father_name || 'N/A',
+              roll_number: r.roll_number || student?.roll_number || 'N/A'
+            };
+          });
+          setEditedRecords(enriched);
+        }
+      }
+    } catch (err) {
+      console.error('Error enriching student attendance list:', err);
+    }
   };
 
   const handleFineChange = (studentId: string, value: string) => {

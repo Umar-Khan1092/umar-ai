@@ -123,9 +123,52 @@ export const TeacherProfile: React.FC = () => {
           <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--tp-primary-light, #DBEAFE)', color: 'var(--tp-primary, #2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700 }}>
             {staff.name.charAt(0)}
           </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>Hi, {staff.name.split(' ')[0]} 👋</h2>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>Hi, {staff.name.split(' ')[0]} 👋</h2>
+              {pushSupported && pushSubscribed && (
+                <span 
+                  title="Notifications Enabled" 
+                  style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    width: '18px', 
+                    height: '18px', 
+                    borderRadius: '50%', 
+                    backgroundColor: '#D1FAE5', 
+                    color: '#065F46', 
+                    fontSize: '11px',
+                    fontWeight: 'bold' 
+                  }}
+                >
+                  ✓
+                </span>
+              )}
+            </div>
             <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748B' }}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+            {pushSupported && !pushSubscribed && (
+              <button
+                onClick={handleTogglePush}
+                style={{
+                  marginTop: '6px',
+                  backgroundColor: '#3B82F6',
+                  color: 'white',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                🔔 Enable Notifications
+              </button>
+            )}
           </div>
         </div>
 

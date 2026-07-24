@@ -198,10 +198,16 @@ export const TakeAttendance: React.FC = () => {
     setIsSaving(true);
     setStatusMsg({type: null, message: ''});
 
-    // Auto-fill all student records with Default Present status if not set
+    // Auto-fill all student records with Default Present status if not set, and include details
     const finalRecords = students.map(s => {
       const existing = attendanceRecords.find(r => r.student_id === s.id);
-      return existing || { student_id: s.id, status: 'Present' };
+      return {
+        student_id: s.id,
+        status: existing ? existing.status : 'Present',
+        student_name: s.name,
+        father_name: s.father_name,
+        roll_number: s.roll_number || s.roll_no || ''
+      };
     });
 
     try {

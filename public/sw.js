@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eduerp-v9';
+const CACHE_NAME = 'eduerp-v10';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -76,7 +76,7 @@ self.addEventListener('push', (event) => {
       return self.registration.showNotification('EduERP Notification', {
         body: text,
         icon: '/logo.webp',
-        vibrate: [200, 100, 200],
+        vibrate: [300, 110, 300, 110, 300, 110, 500],
         silent: false
       });
     }
@@ -97,7 +97,7 @@ self.addEventListener('push', (event) => {
     const options = {
       body: data.message || data.body || 'You have a new notification',
       icon: data.icon || '/logo.webp',
-      vibrate: [200, 100, 200, 100, 200], // Distinctive vibration pattern
+      vibrate: [300, 110, 300, 110, 300, 110, 500], // Stronger default vibration pattern
       silent: false, // Ensure it makes a sound/vibrates
       tag: tag,
       renotify: true, // Vibrate/alert even if a notification with this tag already exists
@@ -112,7 +112,7 @@ self.addEventListener('push', (event) => {
       ]
     };
     
-    const title = data.title ? `EduERP: ${data.title}` : 'EduERP Notification';
+    const title = data.title ? data.title : 'EduERP Notification';
     console.log('[Service Worker] Displaying notification:', title, options);
 
     // Broadcast to active windows

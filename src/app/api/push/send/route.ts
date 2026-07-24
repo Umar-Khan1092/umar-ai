@@ -200,6 +200,47 @@ export async function POST(req: Request) {
         await adminSupabase.from('notification_history').delete().lt('created_at', twentyDaysAgo.toISOString());
 
         await adminSupabase.from('notification_history').insert(historyPayload);
+
+        // Legacy Sync: Insert into legacy notifications table so they appear in portal in-app lists
+        const legacyNotifications: any[] = [];
+        if (userIds && userIds.length > 0) {
+          userIds.forEach((id: string) => {
+            legacyNotifications.push({
+              recipient_id: id,
+              target_role: roles && roles.length > 0 ? roles[0] : 'Guardian',
+              sender_role: 'Admin',
+              title: displayTitle,
+              message: finalMessage,
+              student_id: id.startsWith('parent_') ? id.replace('parent_', '') : id
+            });
+          });
+        } else if (roles && roles.length > 0) {
+          roles.forEach((r: string) => {
+            legacyNotifications.push({
+              target_role: r === 'Guardian' ? 'Guardian' : 'Teacher',
+              sender_role: 'Admin',
+              title: displayTitle,
+              message: finalMessage
+            });
+          });
+        } else {
+          // Broadcast to both
+          legacyNotifications.push({
+            target_role: 'Teacher',
+            sender_role: 'Admin',
+            title: displayTitle,
+            message: finalMessage
+          });
+          legacyNotifications.push({
+            target_role: 'Guardian',
+            sender_role: 'Admin',
+            title: displayTitle,
+            message: finalMessage
+          });
+        }
+        if (legacyNotifications.length > 0) {
+          await adminSupabase.from('notifications').insert(legacyNotifications);
+        }
       }
     }
 
