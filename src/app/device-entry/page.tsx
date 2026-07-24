@@ -9,19 +9,24 @@ export default function DeviceEntry() {
   const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop'>('desktop');
 
   useEffect(() => {
+    // 1. Check if running in standalone PWA (iOS Home Screen)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    
+    if (isStandalone) {
+      // If we are in the installed PWA, set the verification cookie and go to login
+      document.cookie = "is_standalone_pwa=true; path=/; max-age=" + 60*60*24*365;
+      router.push('/login');
+      return;
+    }
+
+    // 2. Otherwise determine device type for installation instructions
     const ua = navigator.userAgent;
     if (/iPad|iPhone|iPod/.test(ua)) {
       setDeviceType('ios');
     } else if (/Android/.test(ua)) {
       setDeviceType('android');
     }
-  }, []);
-
-  const handleContinueInBrowser = () => {
-    // Set cookie to bypass middleware for 30 days
-    document.cookie = "bypass_device_entry=true; path=/; max-age=" + 60*60*24*30;
-    router.push('/login');
-  };
+  }, [router]);
 
   const handleDownloadApk = () => {
     window.location.href = 'https://github.com/Umar-Khan1092/umar-ai/releases/download/latest/app-debug.apk';
@@ -32,16 +37,16 @@ export default function DeviceEntry() {
       <div className="login-card" style={{ width: '100%', maxWidth: '450px', margin: '20px', padding: '40px 30px' }}>
         <div className="login-header" style={{ textAlign: 'center', marginBottom: '30px' }}>
           <img src="/logo.webp" alt="School ERP Logo" className="mobile-login-logo" style={{ width: '80px', height: '80px', margin: '0 auto 15px' }} />
-          <h2>Welcome to School ERP</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>Get the best experience by installing our app.</p>
+          <h2>App Installation Required</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>You must install the app to access the portal on mobile.</p>
         </div>
 
         {deviceType === 'android' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
               <Smartphone size={40} style={{ margin: '0 auto 15px', color: 'var(--primary)' }} />
-              <h3 style={{ marginBottom: '10px' }}>Android App Available</h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Install the native Android app for instant notifications and faster access.</p>
+              <h3 style={{ marginBottom: '10px' }}>Android App Required</h3>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>You must install our native Android app to receive mandatory school push notifications.</p>
             </div>
             <button onClick={handleDownloadApk} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '15px' }}>
               <Download size={20} />
@@ -54,12 +59,12 @@ export default function DeviceEntry() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)' }}>
               <h3 style={{ marginBottom: '15px', textAlign: 'center' }}>Install iOS App</h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '15px', textAlign: 'center' }}>Install our Progressive Web App to receive push notifications.</p>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '15px', textAlign: 'center' }}>You must install our Progressive Web App to access the portal and receive push notifications.</p>
               
               <ol style={{ paddingLeft: '20px', fontSize: '14px', color: 'var(--text-primary)' }}>
                 <li style={{ marginBottom: '10px' }}>Tap the <Share size={16} style={{ display: 'inline', verticalAlign: 'middle' }}/> <strong>Share</strong> button at the bottom of Safari.</li>
                 <li style={{ marginBottom: '10px' }}>Scroll down and tap <PlusSquare size={16} style={{ display: 'inline', verticalAlign: 'middle' }}/> <strong>Add to Home Screen</strong>.</li>
-                <li>Open the app from your home screen.</li>
+                <li>Open the app from your home screen to login.</li>
               </ol>
             </div>
           </div>
@@ -70,26 +75,6 @@ export default function DeviceEntry() {
             <p style={{ color: 'var(--text-secondary)' }}>Redirecting to login...</p>
           </div>
         )}
-
-        <div style={{ marginTop: '30px', textAlign: 'center' }}>
-          <button 
-            onClick={handleContinueInBrowser}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: 'var(--text-secondary)', 
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              width: '100%',
-              fontSize: '15px'
-            }}
-          >
-            Continue in Browser <ArrowRight size={16} />
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -8,11 +8,13 @@ export function proxy(request: NextRequest) {
   if (url.pathname === '/login' || url.pathname === '/') {
     const userAgent = request.headers.get('user-agent') || '';
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    const isCapacitor = userAgent.includes('CapacitorApp');
     
-    // Check if user explicitly chose to continue in browser
-    const bypassCookie = request.cookies.get('bypass_device_entry')?.value;
+    // Check if the PWA has verified it is running in standalone mode
+    const isVerifiedPWA = request.cookies.get('is_standalone_pwa')?.value === 'true';
 
-    if (isMobile && bypassCookie !== 'true') {
+    // If it's a mobile device, but NOT the Capacitor App and NOT the installed PWA
+    if (isMobile && !isCapacitor && !isVerifiedPWA) {
       const redirectUrl = new URL('/device-entry', request.url);
       return NextResponse.redirect(redirectUrl);
     }
