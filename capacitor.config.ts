@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.schoolerp.app',
   appName: 'School ERP',
   webDir: 'out',
-  bundledWebRuntime: false,
   server: {
     url: 'https://umar-ai-consultant.vercel.app/',
     cleartext: true
