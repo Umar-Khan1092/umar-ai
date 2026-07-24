@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "982357177062",
+    "project_id": "edu-erp-system",
+    "storage_bucket": "edu-erp-system.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:982357177062:android:b4f9fbd48f18c7401d0127",
+        "android_client_info": {
+          "package_name": "com.schoolerp.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDm2D4ae8f-Zm9Dg1oSWuJwPNnL8qFM8f4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
