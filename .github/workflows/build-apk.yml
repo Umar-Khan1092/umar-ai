@@ -36,8 +36,8 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci
 
-      - name: Build Next.js
-        run: npm run build
+      - name: Create empty webDir
+        run: mkdir out
         
       - name: Sync Capacitor
         run: npx cap sync android
