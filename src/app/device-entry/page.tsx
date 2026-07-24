@@ -29,7 +29,7 @@ export default function DeviceEntry() {
   }, [router]);
 
   const handleDownloadApk = () => {
-    window.location.href = 'https://github.com/Umar-Khan1092/umar-ai/releases/download/latest/app-debug.apk';
+    window.location.href = '/app-release.apk';
   };
 
   return (
