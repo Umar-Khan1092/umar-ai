@@ -3,14 +3,14 @@ import { adminSupabase } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
-    const subscription = await req.json();
+    const { subscription } = await req.json();
     
-    // Validate required fields from the push subscription object
-    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+    // Validate FCM token
+    if (!subscription?.fcm_token) {
       return NextResponse.json({ error: 'Invalid subscription object' }, { status: 400 });
     }
     
-    // Get user info from the Authorization header (the client will send the Supabase JWT)
+    // Get user info from the Authorization header
     const authHeader = req.headers.get('Authorization');
     let userId: string | null = null;
     let role: string = 'User';
@@ -24,22 +24,18 @@ export async function POST(req: Request) {
       }
     }
 
-    // Verify adminSupabase is available
     if (!adminSupabase) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
     
-    // Upsert the subscription (endpoint is UNIQUE)
+    // Upsert the subscription using the FCM token as the unique endpoint
     const { error } = await adminSupabase
       .from('push_subscriptions')
       .upsert({
         user_id: userId,
         role: role,
-        endpoint: subscription.endpoint,
-        auth_keys: {
-          p256dh: subscription.keys.p256dh,
-          auth: subscription.keys.auth
-        }
+        endpoint: subscription.fcm_token, // Store FCM token as endpoint
+        auth_keys: { type: 'fcm' } // Indicator that this is an FCM token
       }, { onConflict: 'endpoint' });
       
     if (error) throw error;

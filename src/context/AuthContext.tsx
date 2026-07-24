@@ -68,6 +68,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    try {
+      const fcmToken = localStorage.getItem('fcm_current_token');
+      if (fcmToken) {
+        await supabase.from('push_subscriptions').delete().eq('endpoint', fcmToken);
+        localStorage.removeItem('fcm_token_synced');
+        localStorage.removeItem('fcm_current_token');
+      }
+    } catch (e) {
+      console.error('Error cleaning up push token:', e);
+    }
     await supabase.auth.signOut();
   };
 

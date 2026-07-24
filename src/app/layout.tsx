@@ -44,6 +44,14 @@ export const metadata: Metadata = {
   title: "ERRP - Education Resource Planning",
   description: "School Management System",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "EduERP",
+  },
+  icons: {
+    apple: "/logo.webp",
+  },
 };
 
 export default function RootLayout({

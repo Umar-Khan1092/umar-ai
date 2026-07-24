@@ -2,7 +2,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { subscribeToPush, saveSubscriptionToServer } from '@/lib/push';
+import { initializeApp } from 'firebase/app';
+import { getMessaging, getToken } from 'firebase/messaging';
+import { supabase } from '@/lib/supabase';
+
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+};
 
 export const PushNotificationManager: React.FC = () => {
   const { user } = useAuth();
@@ -13,17 +24,14 @@ export const PushNotificationManager: React.FC = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
       setIsSupported(true);
-      // Check current permission without prompting
       if ('Notification' in window) {
         setPermissionState(Notification.permission);
+        if (Notification.permission === 'granted') {
+          // Check localStorage to avoid hammering Firebase
+          const hasToken = localStorage.getItem('fcm_token_synced');
+          if (hasToken) setIsSubscribed(true);
+        }
       }
-      
-      // Check if already subscribed
-      navigator.serviceWorker.ready.then(reg => {
-        reg.pushManager.getSubscription().then(sub => {
-          setIsSubscribed(!!sub);
-        });
-      });
     }
   }, []);
 
@@ -34,30 +42,97 @@ export const PushNotificationManager: React.FC = () => {
     }
   }, [user, isSupported, permissionState, isSubscribed]);
 
-  const handleSubscribe = async () => {
+  const saveSubscriptionToServer = async (token: string) => {
     try {
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidKey) {
-        console.error('VAPID public key not configured');
-        return;
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       
-      const sub = await subscribeToPush(vapidKey);
-      await saveSubscriptionToServer(sub);
-      setIsSubscribed(true);
-      if ('Notification' in window) {
-        setPermissionState(Notification.permission);
+      const res = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ subscription: { fcm_token: token } })
+      });
+      if (res.ok) {
+        localStorage.setItem('fcm_token_synced', 'true');
+        localStorage.setItem('fcm_current_token', token);
       }
-    } catch (err) {
-      console.error('Failed to subscribe to push notifications:', err);
-      if ('Notification' in window) {
-        setPermissionState(Notification.permission);
-      }
+    } catch (e) {
+      console.error('Error saving FCM token', e);
     }
   };
 
-  // Show the banner if it's supported and they are not subscribed.
-  // If denied, they can click 'Enable' to see instructions or try again.
+  const handleSubscribe = async () => {
+    try {
+      if (!firebaseConfig.apiKey) {
+        console.error('Firebase config not found');
+        return;
+      }
+      
+      let token: string | null = null;
+      let isNative = false;
+
+      // Try Capacitor Native Push first
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        if (Capacitor.isNativePlatform()) {
+          isNative = true;
+          const { PushNotifications } = await import('@capacitor/push-notifications');
+          
+          let permStatus = await PushNotifications.checkPermissions();
+          if (permStatus.receive === 'prompt') {
+            permStatus = await PushNotifications.requestPermissions();
+          }
+          
+          if (permStatus.receive === 'granted') {
+            await PushNotifications.register();
+            // Wait up to 5 seconds for the token event
+            token = await new Promise<string | null>((resolve) => {
+              const timeout = setTimeout(() => resolve(null), 5000);
+              PushNotifications.addListener('registration', (t) => {
+                clearTimeout(timeout);
+                resolve(t.value);
+              });
+              PushNotifications.addListener('registrationError', () => {
+                clearTimeout(timeout);
+                resolve(null);
+              });
+            });
+            if (token) {
+              setPermissionState('granted');
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Capacitor native push check failed or not in native context.', e);
+      }
+
+      // Fallback to Firebase Web Push if not native
+      if (!isNative) {
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+        
+        const permission = await Notification.requestPermission();
+        setPermissionState(permission);
+        
+        if (permission === 'granted') {
+          token = await getToken(messaging, {
+            vapidKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+          });
+        }
+      }
+      
+      if (token) {
+        await saveSubscriptionToServer(token);
+        setIsSubscribed(true);
+      }
+    } catch (err) {
+      console.error('Failed to subscribe to FCM push notifications:', err);
+    }
+  };
+
   if (!user || !isSupported || isSubscribed) {
     return null;
   }

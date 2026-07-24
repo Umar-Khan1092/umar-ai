@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
 import { adminSupabase } from '@/lib/supabase';
-import webpush from 'web-push';
+import admin from 'firebase-admin';
+import path from 'path';
+import fs from 'fs';
 
-// Configure Web Push with VAPID keys
-if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    'mailto:admin@umarerpsystem.com',
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
+// Initialize Firebase Admin
+if (!admin.apps.length) {
+  try {
+    const credentialsPath = path.join(process.cwd(), process.env.FIREBASE_ADMIN_CREDENTIALS_PATH || 'edu-erp-system-firebase-adminsdk.json');
+    const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  } catch (err) {
+    console.error('Failed to initialize Firebase Admin SDK:', err);
+  }
 }
 
 export async function POST(req: Request) {
@@ -28,10 +34,6 @@ export async function POST(req: Request) {
 
     if (!adminSupabase) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-    }
-    
-    if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-      return NextResponse.json({ error: 'VAPID keys not configured' }, { status: 500 });
     }
 
     // Resolve any student/staff/parent IDs to their corresponding push subscription user IDs
@@ -95,9 +97,8 @@ export async function POST(req: Request) {
     const { data: settingsRes } = await adminSupabase.from('settings').select('*').eq('key', 'app_settings').maybeSingle();
     const settings = settingsRes?.value || {};
     const schoolName = settings.institute_name || 'School ERP';
-    const schoolLogo = settings.institute_logo || '/logo.webp';
-
-    // ── Generate Context-Aware Titles/Subtitles (Task 2) ──
+    
+    // ── Generate Context-Aware Titles/Subtitles ──
     let finalTitle = title;
     let finalMessage = message;
     const lowerTitle = title.toLowerCase();
@@ -138,13 +139,12 @@ export async function POST(req: Request) {
       finalTitle = '🔒 Approval Required';
     }
 
-    // Dynamic Notification Branding (Task 1): Prefix the title with the school name
+    // Dynamic Notification Branding: Prefix the title with the school name
     const displayTitle = `${schoolName} - ${finalTitle}`;
 
     // Build the query to get subscriptions
     let query = adminSupabase.from('push_subscriptions').select('*');
     
-    // Fix target query (Task 4): Match both resolvedUserIds AND roles if both are supplied
     let filters: string[] = [];
     if (userIds && userIds.length > 0 && resolvedUserIds.length > 0) {
       filters.push(`user_id.in.(${resolvedUserIds.map((id: string) => `"${id}"`).join(',')})`);
@@ -160,7 +160,7 @@ export async function POST(req: Request) {
     const { data: subscriptions, error: subError } = await query;
     if (subError) throw subError;
 
-    // Log the notification in history unless skipped (Task 5: Save Admin notifications in Sent history)
+    // Log the notification in history unless skipped
     if (!skipHistory) {
       const historyPayload: any[] = [];
       if (userIds && userIds.length > 0) {
@@ -248,45 +248,49 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, sent: 0 });
     }
 
-    // Dynamic branding icon configuration (Task 1)
-    const payload = JSON.stringify({
-      title: displayTitle,
-      message: finalMessage,
-      url,
-      icon: schoolLogo,
-      schoolName: schoolName,
-      tag: category || 'general',
-      category: category || 'general'
-    });
+    // Extract FCM tokens from subscriptions
+    const fcmTokens = subscriptions.map((sub: any) => sub.endpoint).filter(Boolean);
 
-    const sendPromises = subscriptions.map(async (sub) => {
-      const pushSubscription = {
-        endpoint: sub.endpoint,
-        keys: sub.auth_keys
-      };
-      
-      try {
-        await webpush.sendNotification(pushSubscription, payload, {
-          headers: {
-            'Urgency': 'high'
-          },
-          TTL: 86400
-        });
-      } catch (err: any) {
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          // Subscription has expired or is no longer valid, remove it
-          await adminSupabase.from('push_subscriptions').delete().eq('id', sub.id);
+    if (fcmTokens.length === 0) {
+      return NextResponse.json({ success: true, sent: 0 });
+    }
+
+    // Dispatch via Firebase Admin SDK
+    const fcmMessage = {
+      notification: {
+        title: displayTitle,
+        body: finalMessage,
+      },
+      data: {
+        url: url || '/',
+        category: category || 'general'
+      },
+      tokens: fcmTokens
+    };
+
+    const fcmResponse = await admin.messaging().sendEachForMulticast(fcmMessage);
+    
+    // Cleanup invalid FCM tokens
+    const failedTokens: string[] = [];
+    fcmResponse.responses.forEach((resp, idx) => {
+      if (!resp.success) {
+        const errCode = resp.error?.code;
+        if (errCode === 'messaging/invalid-registration-token' || errCode === 'messaging/registration-token-not-registered') {
+          failedTokens.push(fcmTokens[idx]);
         } else {
-          console.error('Error sending push notification:', err);
+          console.error('FCM Send Error for token:', fcmTokens[idx], resp.error);
         }
       }
     });
 
-    await Promise.all(sendPromises);
+    if (failedTokens.length > 0) {
+      // Delete invalid tokens from Supabase
+      await adminSupabase.from('push_subscriptions').delete().in('endpoint', failedTokens);
+    }
 
-    return NextResponse.json({ success: true, sent: subscriptions.length });
+    return NextResponse.json({ success: true, sent: fcmResponse.successCount });
   } catch (err: any) {
-    console.error('Send push error:', err);
+    console.error('FCM push error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -8,8 +8,13 @@
     "start": "next start"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/push-notifications": "^8.1.2",
     "@supabase/supabase-js": "^2.110.7",
     "core-js": "^3.37.1",
+    "firebase": "^11.2.0",
+    "firebase-admin": "^14.2.0",
     "framer-motion": "^12.42.2",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
@@ -18,14 +23,13 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-timekeeper": "^2.2.1",
-    "recharts": "^3.10.0",
-    "web-push": "^3.6.7"
+    "recharts": "^3.10.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/web-push": "^3.6.4",
     "typescript": "^5"
   }
 }

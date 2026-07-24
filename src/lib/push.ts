@@ -1,38 +1,48 @@
 // src/lib/push.ts
 import { supabase } from './supabase';
+import { initializeApp, getApps } from 'firebase/app';
+import { getMessaging, getToken, deleteToken } from 'firebase/messaging';
 
-export const urlB64ToUint8Array = (base64String: string) => {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-export const subscribeToPush = async (vapidPublicKey: string) => {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+export const subscribeToPush = async (vapidPublicKey?: string) => {
+  if (typeof window === 'undefined') {
+    throw new Error('Must be called on the client');
+  }
+  if (!('Notification' in window)) {
     throw new Error('Push messaging is not supported.');
   }
 
-  const registration = await navigator.serviceWorker.ready;
-  const existingSubscription = await registration.pushManager.getSubscription();
-  if (existingSubscription) {
-    return existingSubscription;
+  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  const messaging = getMessaging(app);
+
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    throw new Error('Notification permission denied');
   }
 
-  const convertedVapidKey = urlB64ToUint8Array(vapidPublicKey);
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: convertedVapidKey,
-  });
+  const token = await getToken(messaging, { vapidKey: vapidPublicKey || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY });
+  if (!token) {
+    throw new Error('Failed to generate FCM token');
+  }
 
-  return subscription;
+  return token;
 };
 
-export const saveSubscriptionToServer = async (subscription: PushSubscription) => {
+export const unsubscribeFromPush = async () => {
+  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  const messaging = getMessaging(app);
+  await deleteToken(messaging);
+};
+
+export const saveSubscriptionToServer = async (fcmToken: string) => {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token || '';
 
@@ -42,7 +52,7 @@ export const saveSubscriptionToServer = async (subscription: PushSubscription) =
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     },
-    body: JSON.stringify(subscription),
+    body: JSON.stringify({ subscription: { fcm_token: fcmToken } }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
