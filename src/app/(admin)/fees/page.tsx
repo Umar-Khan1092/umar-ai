@@ -296,7 +296,7 @@ export const FeeManagement: React.FC = () => {
                 'Authorization': `Bearer ${authData.data.session?.access_token}`
               },
               body: JSON.stringify({
-                userIds: userIds,
+                userIds: userIds.map((id: string) => 'parent_' + id),
                 title: 'New Fee Invoice',
                 message: 'A new fee invoice has been generated for your child. Please check the portal.',
                 url: '/guardian/guardianfees',
@@ -450,7 +450,7 @@ export const FeeManagement: React.FC = () => {
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
-          body: JSON.stringify({ userIds: [paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', skipHistory: true })
+          body: JSON.stringify({ userIds: ['parent_' + paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', skipHistory: true })
         }).catch(e => console.error(e));
       } else if (newStatus === 'Partial') {
         const remainingStr = (paymentVoucher.total_amount - newAmountPaid).toLocaleString();
@@ -463,7 +463,7 @@ export const FeeManagement: React.FC = () => {
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
-          body: JSON.stringify({ userIds: [paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', skipHistory: true })
+          body: JSON.stringify({ userIds: ['parent_' + paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', skipHistory: true })
         }).catch(e => console.error(e));
       }
 
@@ -539,7 +539,7 @@ export const FeeManagement: React.FC = () => {
               'Authorization': `Bearer ${authData.data.session?.access_token}`
             },
             body: JSON.stringify({
-              userIds: userIds,
+              userIds: userIds.map((id: string) => 'parent_' + id),
               title: 'New Fee Invoice',
               message: 'A new fee invoice has been generated for your child. Please check the portal.',
               url: '/guardian/guardianfees',

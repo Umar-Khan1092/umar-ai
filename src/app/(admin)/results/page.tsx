@@ -206,6 +206,33 @@ export const AdminResults: React.FC = () => {
         if (error) throw error;
       }
       
+      // Auto-notify parents (Task 2 flow)
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        await Promise.all((editedRecords || []).map(async (r: any) => {
+          const studentName = r.student_name || 'your child';
+          const title = `🏆 Exam Results Published: ${selectedRecord.exam_term}`;
+          const message = `Dear Parent, the exam results for ${studentName} (${selectedRecord.class_name} - ${selectedRecord.section}) in the subject ${selectedRecord.subject} have been published. Marks obtained: ${r.obtained_marks} / ${selectedRecord.total_marks}.`;
+          
+          await fetch('/api/push/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              userIds: ['parent_' + r.student_id],
+              title,
+              message,
+              category: 'Results',
+              url: '/guardian/guardianacademics'
+            })
+          });
+        }));
+      } catch (err) {
+        console.error('Error sending result notifications:', err);
+      }
+
       setStatusMsg({type: 'success', message: 'Result published successfully!'});
       setTimeout(() => setStatusMsg({type: null, message: ''}), 3000);
       setSelectedRecord(null);

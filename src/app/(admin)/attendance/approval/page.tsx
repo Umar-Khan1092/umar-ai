@@ -116,6 +116,34 @@ export const AdminAttendanceApproval: React.FC = () => {
       
       if (error) throw error;
       
+      // Auto-notify parents (Task 2 flow)
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        const dateFormatted = new Date(selectedRecord.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        
+        await Promise.all((editedRecords || []).map(async (r: any) => {
+          const title = `📅 Attendance Recorded: ${r.status}`;
+          const message = `Dear Parent, your child ${r.student_name || 'Student'} (${selectedRecord.class_name} - ${selectedRecord.section}) was marked ${r.status} on ${dateFormatted}.${r.status === 'Absent' && r.fine ? ` An absentee fine of Rs. ${r.fine} has been applied.` : ''}`;
+          
+          await fetch('/api/push/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              userIds: ['parent_' + r.student_id],
+              title,
+              message,
+              category: 'Attendance',
+              url: '/guardian/guardianhome'
+            })
+          });
+        }));
+      } catch (err) {
+        console.error('Error sending attendance notifications to parents:', err);
+      }
+
       setStatusMsg({type: 'success', message: 'Attendance published and fines applied!'});
       setTimeout(() => setStatusMsg({type: null, message: ''}), 3000);
       setSelectedRecord(null);

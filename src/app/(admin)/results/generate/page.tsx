@@ -234,12 +234,51 @@ export const AdminResultGeneration: React.FC = () => {
       .then(({ error }) => {
         if (error) throw error;
         showToast(`Global Results ${status} successfully!`, 'success');
+        if (notifyParents) {
+          triggerGlobalResultNotifications(resultsPayload, examTerm, selectedClass);
+        }
         setPublishModal(null);
         setActiveTab(status === 'Draft' ? 'Drafts' : 'Published');
         setStep(1); // Reset to start
       })
       .catch(() => showToast('Error saving results', 'error'))
       .finally(() => setIsLoading(false));
+  };
+
+  const triggerGlobalResultNotifications = async (studentsResults: any[], term: string, className: string) => {
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const studentIds = studentsResults.map(r => r.student_id);
+      if (studentIds.length === 0) return;
+      
+      const { data: studentsData } = await supabase
+        .from('students')
+        .select('id, name')
+        .in('id', studentIds);
+
+      await Promise.all(studentsResults.map(async (r: any) => {
+        const studentName = studentsData?.find(s => s.id === r.student_id)?.name || 'your child';
+        const title = `🏆 Term Results Published: ${term}`;
+        const message = `Dear Parent, the final results for ${studentName} (${className}) for ${term} have been published. Status: ${r.status}, Grade: ${r.grade}, Position: ${r.position}, Total Obtained: ${r.total_obtained} / ${r.total_max} (${r.percentage}%).`;
+        
+        await fetch('/api/push/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userIds: ['parent_' + r.student_id],
+            title,
+            message,
+            category: 'Results',
+            url: '/guardian/guardianacademics'
+          })
+        });
+      }));
+    } catch (err) {
+      console.error('Failed to send global result notifications:', err);
+    }
   };
 
   const handleMarkChange = (studentId: string, subjectName: string, val: string) => {
@@ -888,10 +927,10 @@ export const AdminResultGeneration: React.FC = () => {
                 className="btn-primary" 
                 onClick={() => {
                   if (publishModal.data) {
-                     // For manual notification logic, you can save notify flag or handle pushing notification
                      Promise.resolve(supabase.from('generated_results').update({ notify_parents: true, status: 'Published' }).eq('id', publishModal.data.id))
                      .then(({ error }) => {
                        if (error) throw error;
+                       triggerGlobalResultNotifications(publishModal.data.students_results || [], publishModal.data.exam_term, publishModal.data.class_name);
                        showToast('Notifications sent to parents!', 'success');
                        setPublishModal(null);
                        fetchSavedResults();

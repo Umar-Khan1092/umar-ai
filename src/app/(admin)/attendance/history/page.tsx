@@ -240,7 +240,7 @@ export const AttendanceHistory: React.FC = () => {
         currentList.forEach(item => {
           const student = allStudents.find(s => s.id === item.student_id);
           if (student) {
-            userIds.push(student.guardian_id || student.id);
+            userIds.push(student.guardian_id || ('parent_' + student.id));
           }
         });
       } else {

@@ -103,7 +103,7 @@ export const StaffSalaries: React.FC = () => {
         title: `💰 Salary Disbursed — ${formatMonthName(confirmSlip.month)}`,
         message: `Dear ${confirmSlip.staff_name},\n\nYour salary for ${formatMonthName(confirmSlip.month)} has been disbursed.\n\n✅ Net Paid: Rs ${confirmSlip.net_payable}\n📅 Payment Date: ${new Date().toLocaleString()}\n\nSchool Administration`,
         target_role: 'Teacher',
-        student_id: confirmSlip.staff_id // Wait, staff_id is in notifications for teacher portal mapping
+        recipient_id: confirmSlip.staff_id
       });
 
       const authData = await supabase.auth.getSession();

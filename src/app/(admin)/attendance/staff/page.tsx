@@ -76,16 +76,24 @@ export const AdminStaffAttendance: React.FC = () => {
             : r.status === 'Absent'
             ? `Dear ${r.staff_name},\n\nYour attendance was marked as Absent on ${dateFormatted}. Please contact administration if this is incorrect.`
             : `Dear ${r.staff_name},\n\nYour leave has been recorded for ${dateFormatted}.`;
-          fetch('/api/push/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: `Attendance: ${r.status} — ${dateFormatted}`,
-              message,
-              category: 'Attendance',
-              userIds: [r.staff_id],
-            })
-          }).catch(() => {});
+          supabase.auth.getSession().then(({ data }) => {
+            const token = data.session?.access_token;
+            if (token) {
+              fetch('/api/push/send', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  title: `Attendance: ${r.status} — ${dateFormatted}`,
+                  message,
+                  category: 'Attendance',
+                  userIds: [r.staff_id],
+                })
+              }).catch(() => {});
+            }
+          });
         });
       }
       

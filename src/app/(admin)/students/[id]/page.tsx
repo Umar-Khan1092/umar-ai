@@ -239,7 +239,7 @@ export const StudentProfile: React.FC = () => {
       const isToAdmin = user?.role === 'Guardian';
       triggerWebPush({
         roles: isToAdmin ? ['Admin'] : ['Guardian'],
-        userIds: isToAdmin ? undefined : [student.id], // Wait, for guardian the user_id is the student_id!
+        userIds: isToAdmin ? undefined : ['parent_' + student.id],
         title: `Remark from ${user?.name || 'Admin'}`,
         message: newRemark.trim(),
         url: isToAdmin ? '/admin-notices' : '/guardian/guardianhome',
