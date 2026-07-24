@@ -24,8 +24,7 @@ export default function DeviceEntry() {
   };
 
   const handleDownloadApk = () => {
-    // Assuming the APK is hosted in the public directory or an external link
-    window.location.href = '/app-release.apk';
+    window.location.href = 'https://github.com/Umar-Khan1092/umar-ai/releases/download/latest/app-debug.apk';
   };
 
   return (
