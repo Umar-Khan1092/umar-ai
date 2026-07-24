@@ -19,10 +19,14 @@ if (!getApps().length) {
       });
     } else {
       const credentialsPath = path.join(process.cwd(), process.env.FIREBASE_ADMIN_CREDENTIALS_PATH || 'edu-erp-system-firebase-adminsdk.json');
-      const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-      initializeApp({
-        credential: cert(serviceAccount)
-      });
+      if (fs.existsSync(credentialsPath)) {
+        const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+        initializeApp({
+          credential: cert(serviceAccount)
+        });
+      } else {
+        console.warn('Firebase Admin SDK: No FIREBASE_PRIVATE_KEY env var and no local JSON credentials found. Push notifications will fail.');
+      }
     }
   } catch (err) {
     console.error('Failed to initialize Firebase Admin SDK:', err);
