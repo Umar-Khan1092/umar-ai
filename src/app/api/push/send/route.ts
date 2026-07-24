@@ -1,17 +1,29 @@
 import { NextResponse } from 'next/server';
 import { adminSupabase } from '@/lib/supabase';
-import admin from 'firebase-admin';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import path from 'path';
 import fs from 'fs';
 
 // Initialize Firebase Admin
-if (!admin.apps.length) {
+if (!getApps().length) {
   try {
-    const credentialsPath = path.join(process.cwd(), process.env.FIREBASE_ADMIN_CREDENTIALS_PATH || 'edu-erp-system-firebase-adminsdk.json');
-    const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
+    if (process.env.FIREBASE_PRIVATE_KEY) {
+      initializeApp({
+        credential: cert({
+          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          // Handle newline characters in the private key when loaded from Vercel ENV
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        }),
+      });
+    } else {
+      const credentialsPath = path.join(process.cwd(), process.env.FIREBASE_ADMIN_CREDENTIALS_PATH || 'edu-erp-system-firebase-adminsdk.json');
+      const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+      initializeApp({
+        credential: cert(serviceAccount)
+      });
+    }
   } catch (err) {
     console.error('Failed to initialize Firebase Admin SDK:', err);
   }
@@ -268,7 +280,7 @@ export async function POST(req: Request) {
       tokens: fcmTokens
     };
 
-    const fcmResponse = await admin.messaging().sendEachForMulticast(fcmMessage);
+    const fcmResponse = await getMessaging().sendEachForMulticast(fcmMessage);
     
     // Cleanup invalid FCM tokens
     const failedTokens: string[] = [];
