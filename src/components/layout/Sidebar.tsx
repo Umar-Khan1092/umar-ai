@@ -80,6 +80,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, items =
       .catch(err => console.error("Error fetching settings for sidebar:", err));
   }, []);
 
+  // Global desktop notifications for Admin (Task 7)
+  useEffect(() => {
+    if (!user || user.role !== 'Admin') return;
+
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    const channel = supabase
+      .channel('admin-global-desktop-notices')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload: any) => {
+          const newNotif = payload.new;
+          if (
+            newNotif &&
+            (newNotif.target_role === 'Admin' || newNotif.recipient_role === 'Admin') &&
+            ['Guardian', 'Teacher'].includes(newNotif.sender_role)
+          ) {
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification(newNotif.title || 'New ERP Message', {
+                body: newNotif.message || 'You have a new message on the school portal.',
+                icon: '/logo.webp'
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const handleLogout = () => {
     logout();
     router.push('/login');

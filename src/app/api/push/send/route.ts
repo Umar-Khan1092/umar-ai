@@ -91,19 +91,76 @@ export async function POST(req: Request) {
       }
     }
 
+    // Fetch settings for dynamic branding
+    const { data: settingsRes } = await adminSupabase.from('settings').select('*').eq('key', 'app_settings').maybeSingle();
+    const settings = settingsRes?.value || {};
+    const schoolName = settings.institute_name || 'School ERP';
+    const schoolLogo = settings.institute_logo || '/logo.webp';
+
+    // ── Generate Context-Aware Titles/Subtitles (Task 2) ──
+    let finalTitle = title;
+    let finalMessage = message;
+    const lowerTitle = title.toLowerCase();
+    const lowerMsg = message.toLowerCase();
+    const cat = (category || '').toLowerCase();
+
+    if (lowerTitle.includes('invoice') || (cat === 'finance' && lowerTitle.includes('new fee'))) {
+      finalTitle = '📄 Fee Invoice Generated';
+      if (message.includes('invoice has been generated') || message.length < 25) {
+        finalMessage = 'A new fee invoice is ready for your review. Please visit the Fees tab in your portal.';
+      }
+    } else if (lowerTitle.includes('confirmed') || lowerTitle.includes('received') || (cat === 'finance' && (lowerTitle.includes('payment') || lowerMsg.includes('received')))) {
+      finalTitle = '✅ Fee Payment Confirmed';
+    } else if (lowerTitle.includes('result') || lowerTitle.includes('report card') || cat === 'results') {
+      finalTitle = '🏆 Exam Results Published';
+      if (message.length < 25) {
+        finalMessage = 'The latest academic results have been published. Check your Academics tab to view the report card.';
+      }
+    } else if (lowerTitle.includes('attendance') && (lowerTitle.includes('marked') || lowerMsg.includes('recorded') || lowerMsg.includes('marked'))) {
+      finalTitle = '📅 Attendance Recorded';
+    } else if (lowerTitle.includes('attendance') && (lowerTitle.includes('reminder') || lowerMsg.includes('submit'))) {
+      finalTitle = '🔔 Attendance Submission Reminder';
+    } else if (lowerTitle.includes('remark') || lowerTitle.includes('behavior') || lowerMsg.includes('remark')) {
+      finalTitle = '📝 New Teacher Remark';
+    } else if (lowerTitle.includes('parent') && (lowerTitle.includes('message') || lowerTitle.includes('contact') || cat === 'chat')) {
+      finalTitle = '💬 New Parent Message';
+    } else if (lowerTitle.includes('teacher') && (lowerTitle.includes('message') || cat === 'chat')) {
+      finalTitle = '💬 New Teacher Message';
+    } else if (cat === 'announcements' || lowerTitle.includes('announcement') || lowerTitle.includes('notice')) {
+      finalTitle = '📢 Administrative Notice';
+    } else if (lowerTitle.includes('exam') || lowerTitle.includes('date sheet') || lowerTitle.includes('schedule')) {
+      finalTitle = '📅 Exam Schedule Published';
+    } else if (lowerTitle.includes('homework') || lowerMsg.includes('homework')) {
+      finalTitle = '📚 New Homework Assigned';
+    } else if (lowerTitle.includes('leave') && lowerTitle.includes('request')) {
+      finalTitle = '✉️ Leave Request Submitted';
+    } else if (lowerTitle.includes('approval') || lowerMsg.includes('approval')) {
+      finalTitle = '🔒 Approval Required';
+    }
+
+    // Dynamic Notification Branding (Task 1): Prefix the title with the school name
+    const displayTitle = `${schoolName} - ${finalTitle}`;
+
     // Build the query to get subscriptions
     let query = adminSupabase.from('push_subscriptions').select('*');
     
-    if (userIds && userIds.length > 0) {
-      query = query.in('user_id', resolvedUserIds);
-    } else if (roles && roles.length > 0) {
-      query = query.in('role', roles);
+    // Fix target query (Task 4): Match both resolvedUserIds AND roles if both are supplied
+    let filters: string[] = [];
+    if (userIds && userIds.length > 0 && resolvedUserIds.length > 0) {
+      filters.push(`user_id.in.(${resolvedUserIds.map((id: string) => `"${id}"`).join(',')})`);
+    }
+    if (roles && roles.length > 0) {
+      filters.push(`role.in.(${roles.map((r: string) => `"${r}"`).join(',')})`);
+    }
+
+    if (filters.length > 0) {
+      query = query.or(filters.join(','));
     }
     
     const { data: subscriptions, error: subError } = await query;
     if (subError) throw subError;
 
-    // Log the notification in history unless skipped
+    // Log the notification in history unless skipped (Task 5: Save Admin notifications in Sent history)
     if (!skipHistory) {
       const historyPayload: any[] = [];
       if (userIds && userIds.length > 0) {
@@ -111,8 +168,8 @@ export async function POST(req: Request) {
           historyPayload.push({
             recipient_id: id,
             category: category || 'Announcements',
-            title,
-            message,
+            title: displayTitle,
+            message: finalMessage,
             url
           });
         });
@@ -121,8 +178,8 @@ export async function POST(req: Request) {
           historyPayload.push({
             role: r,
             category: category || 'Announcements',
-            title,
-            message,
+            title: displayTitle,
+            message: finalMessage,
             url
           });
         });
@@ -130,8 +187,8 @@ export async function POST(req: Request) {
         // Broadcast to all
         historyPayload.push({
           category: category || 'Announcements',
-          title,
-          message,
+          title: displayTitle,
+          message: finalMessage,
           url
         });
       }
@@ -150,11 +207,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, sent: 0 });
     }
 
+    // Dynamic branding icon configuration (Task 1)
     const payload = JSON.stringify({
-      title,
-      message,
+      title: displayTitle,
+      message: finalMessage,
       url,
-      icon: '/logo.webp',
+      icon: schoolLogo,
+      schoolName: schoolName,
       tag: category || 'general',
       category: category || 'general'
     });

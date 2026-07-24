@@ -20,6 +20,62 @@ export const TeacherProfile: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'profile'>('dashboard');
   const router = useRouter();
 
+  // Push Notifications States (Task 11)
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
+      setPushSupported(true);
+      if ('Notification' in window) {
+        setPushPermission(Notification.permission);
+      }
+      navigator.serviceWorker.ready.then(reg => {
+        reg.pushManager.getSubscription().then(sub => {
+          setPushSubscribed(!!sub);
+        });
+      });
+    }
+  }, []);
+
+  const handleTogglePush = async () => {
+    if (pushSubscribed) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await sub.unsubscribe();
+          setPushSubscribed(false);
+          alert('Notifications disabled.');
+        }
+      } catch (err) {
+        console.error('Failed to unsubscribe:', err);
+      }
+    } else {
+      if (pushPermission === 'denied') {
+        alert('Notifications are blocked by your browser. Please enable them in your site settings and refresh.');
+        return;
+      }
+      try {
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidKey) throw new Error('VAPID key not configured');
+        
+        const { subscribeToPush, saveSubscriptionToServer } = await import('@/lib/push');
+        const sub = await subscribeToPush(vapidKey);
+        await saveSubscriptionToServer(sub);
+        
+        setPushSubscribed(true);
+        if ('Notification' in window) {
+          setPushPermission(Notification.permission);
+        }
+        alert('Notifications enabled successfully!');
+      } catch (err: any) {
+        alert('Failed to enable notifications: ' + err.message);
+      }
+    }
+  };
+
   useEffect(() => {
     if (user?.id) {
       if (user.role === 'Admin' && user.id === 'admin-0') {
@@ -124,7 +180,7 @@ export const TeacherProfile: React.FC = () => {
 
           <div 
             onClick={() => router.push('/teacher/notifications')}
-            style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', padding: '16px', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+            style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', padding: '16px', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '12px' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -137,6 +193,30 @@ export const TeacherProfile: React.FC = () => {
             </div>
             <ChevronRight size={20} color="#94A3B8" />
           </div>
+
+          {pushSupported && (
+            <div 
+              onClick={handleTogglePush}
+              style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', padding: '16px', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: pushSubscribed ? '#E0F2FE' : '#FEE2E2', color: pushSubscribed ? '#0369A1' : '#B91C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Bell size={20} />
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>
+                    {pushSubscribed ? 'Notifications Enabled' : 'Enable Notifications'}
+                  </h4>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>
+                    {pushSubscribed ? 'You will receive background push notifications' : 'Tap to receive background push alerts'}
+                  </p>
+                </div>
+              </div>
+              <div style={{ width: '36px', height: '20px', borderRadius: '10px', backgroundColor: pushSubscribed ? '#10B981' : '#CBD5E1', position: 'relative', transition: 'all 0.2s ease', flexShrink: 0 }}>
+                <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: pushSubscribed ? '18px' : '2px', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

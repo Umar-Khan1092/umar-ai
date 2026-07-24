@@ -147,7 +147,11 @@ export const TakeAttendance: React.FC = () => {
           setAttendanceRecords(attData.records || []);
           setRecordStatus(attData.status || 'Draft');
         } else {
-          setAttendanceRecords([]);
+          const defaultRecords = (stdData || []).map((s: any) => ({
+            student_id: s.id,
+            status: 'Present'
+          }));
+          setAttendanceRecords(defaultRecords);
           setRecordStatus('Draft');
         }
         setIsLoading(false);
@@ -186,10 +190,19 @@ export const TakeAttendance: React.FC = () => {
   };
 
   const handleSave = async (submitToAdmin: boolean = false) => {
-    if (attendanceRecords.length === 0) return;
+    if (students.length === 0) {
+      setStatusMsg({type: 'error', message: 'No students found in this class.'});
+      return;
+    }
     
     setIsSaving(true);
     setStatusMsg({type: null, message: ''});
+
+    // Auto-fill all student records with Default Present status if not set
+    const finalRecords = students.map(s => {
+      const existing = attendanceRecords.find(r => r.student_id === s.id);
+      return existing || { student_id: s.id, status: 'Present' };
+    });
 
     try {
       const payload = {
@@ -198,7 +211,7 @@ export const TakeAttendance: React.FC = () => {
         section: selectedSection,
         subject: selectedSubject || null,
         teacher_id: user?.id,
-        records: attendanceRecords,
+        records: finalRecords,
         status: submitToAdmin ? 'Submitted' : 'Draft'
       };
       

@@ -45,6 +45,43 @@ export default function NotificationsPage() {
     }
   }, [tab]);
 
+  // Desktop Notifications for Admin (Task 7)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    const channel = supabase
+      .channel('admin-notices-realtime-page')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload: any) => {
+          const newNotif = payload.new;
+          if (
+            newNotif &&
+            (newNotif.target_role === 'Admin' || newNotif.recipient_role === 'Admin') &&
+            ['Guardian', 'Teacher'].includes(newNotif.sender_role)
+          ) {
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification(newNotif.title || 'New Message', {
+                body: newNotif.message || 'New message received.',
+                icon: '/logo.webp'
+              });
+            }
+            if (tab === 'received') {
+              fetchData();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tab]);
+
   const fetchData = async () => {
     setIsLoading(true);
     const dbClient = adminSupabase || supabase;
@@ -53,8 +90,14 @@ export default function NotificationsPage() {
         const { data } = await dbClient.from('notification_history').select('*').order('created_at', { ascending: false }).limit(50);
         setSentMessages(data || []);
       } else if (tab === 'received') {
-        // Assume messages sent to Admin role or this specific user
-        const { data } = await dbClient.from('notifications').select('*').or('recipient_role.eq.Admin,target_role.eq.Admin').order('created_at', { ascending: false }).limit(50);
+        // Task 6: Filter only Parent (Guardian) and Teacher received messages, no sent items
+        const { data } = await dbClient
+          .from('notifications')
+          .select('*')
+          .eq('target_role', 'Admin')
+          .in('sender_role', ['Guardian', 'Teacher'])
+          .order('created_at', { ascending: false })
+          .limit(50);
         setReceivedMessages(data || []);
       } else if (tab === 'chat') {
         // Fetch all parent-teacher communications (mocking by fetching messages categorized as Chat)
@@ -111,6 +154,13 @@ export default function NotificationsPage() {
       if (composeForm.targetType === 'Staff') {
         payload.roles = composeForm.selectedRoles.length > 0 ? composeForm.selectedRoles : ['Teacher', 'Admin'];
       } else {
+        // Resolve selectedClasses to specific student userIds (Task 5 context)
+        if (composeForm.selectedClasses.length > 0) {
+          const classStudents = availableStudents.filter(s => composeForm.selectedClasses.includes(s.class_name || (s as any).academic_class));
+          if (classStudents.length > 0) {
+            payload.userIds = classStudents.map(s => s.id);
+          }
+        }
         payload.roles = ['Guardian'];
       }
 
