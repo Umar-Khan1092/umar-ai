@@ -34,10 +34,8 @@ export const NotificationButton: React.FC = () => {
             PushNotifications.checkPermissions().then(async permStatus => {
               if (permStatus.receive === 'granted') {
                 setPermissionState('granted');
-                const hasToken = localStorage.getItem('fcm_token_synced');
-                if (hasToken) setIsSubscribed(true);
                 
-                // CRITICAL: Always ensure the channel exists even if already subscribed
+                // CRITICAL: Always ensure the channel exists
                 try {
                   await PushNotifications.createChannel({
                     id: 'high_priority_alerts',
@@ -48,7 +46,31 @@ export const NotificationButton: React.FC = () => {
                     vibration: true,
                     sound: 'default'
                   });
-                } catch(e) { console.log(e); }
+                } catch(e) { console.log('Error creating channel', e); }
+
+                // Clean up duplicate listeners on startup
+                try {
+                  await PushNotifications.removeAllListeners();
+                } catch(e) {}
+
+                // Register push listeners on launch to keep token synced
+                PushNotifications.addListener('registration', (tokenData) => {
+                  const currentToken = tokenData.value;
+                  const syncedToken = localStorage.getItem('fcm_current_token');
+                  
+                  setIsSubscribed(true);
+                  if (currentToken !== syncedToken || !localStorage.getItem('fcm_token_synced')) {
+                    console.log('FCM Token changed/unsynced on startup, saving...');
+                    saveSubscriptionToServer(currentToken);
+                  }
+                });
+
+                PushNotifications.addListener('registrationError', (error) => {
+                  console.error('Push registration error:', error);
+                });
+
+                // Request registration token
+                await PushNotifications.register();
               } else if (permStatus.receive === 'denied') {
                 setPermissionState('denied');
               }
@@ -129,6 +151,11 @@ export const NotificationButton: React.FC = () => {
           } catch(e) {
             console.log('Error creating push channel', e);
           }
+
+          // Clean up duplicate listeners before adding new ones
+          try {
+            await PushNotifications.removeAllListeners();
+          } catch(e) {}
 
           await PushNotifications.register();
           // Wait up to 5 seconds for the token event

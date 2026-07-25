@@ -52,18 +52,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
+    const isValidUUID = (uuid: string) => {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+    };
+
     // Resolve any student/staff/parent IDs to their corresponding push subscription user IDs
     let resolvedUserIds: string[] = [];
     if (userIds && userIds.length > 0) {
-      resolvedUserIds = [...userIds];
-      
       const studentIdsToLookup: string[] = [];
       const staffIdsToLookup: string[] = [];
 
       userIds.forEach((id: string) => {
         if (id.startsWith('parent_')) {
-          studentIdsToLookup.push(id.replace('parent_', ''));
-        } else {
+          const actualId = id.replace('parent_', '');
+          if (isValidUUID(actualId)) {
+            studentIdsToLookup.push(actualId);
+          }
+        } else if (id.startsWith('staff_')) {
+          const actualId = id.replace('staff_', '');
+          if (isValidUUID(actualId)) {
+            staffIdsToLookup.push(actualId);
+          }
+        } else if (isValidUUID(id)) {
+          resolvedUserIds.push(id);
+          // Standard raw UUID might be a student_id or staff_id, so lookup too just in case
           studentIdsToLookup.push(id);
           staffIdsToLookup.push(id);
         }
@@ -78,7 +90,7 @@ export async function POST(req: Request) {
         
         if (studentRecords) {
           studentRecords.forEach((s: any) => {
-            if (s.guardian_id) {
+            if (s.guardian_id && isValidUUID(s.guardian_id)) {
               resolvedUserIds.push(s.guardian_id);
             }
           });
@@ -99,7 +111,7 @@ export async function POST(req: Request) {
             const { data: authUsers } = await adminSupabase.auth.admin.listUsers();
             if (authUsers && authUsers.users) {
               authUsers.users.forEach((u: any) => {
-                if (u.email && emails.includes(u.email)) {
+                if (u.email && emails.includes(u.email) && isValidUUID(u.id)) {
                   resolvedUserIds.push(u.id);
                 }
               });
@@ -107,6 +119,9 @@ export async function POST(req: Request) {
           }
         }
       }
+
+      // Deduplicate resolved IDs and make sure they are all clean UUIDs
+      resolvedUserIds = Array.from(new Set(resolvedUserIds)).filter(isValidUUID);
     }
 
     // Fetch settings for dynamic branding
