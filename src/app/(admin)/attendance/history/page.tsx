@@ -245,7 +245,7 @@ export const AttendanceHistory: React.FC = () => {
         });
       } else {
         currentList.forEach(item => {
-          if (item.staff_id) userIds.push(item.staff_id);
+          if (item.staff_id) userIds.push('staff_' + item.staff_id);
         });
       }
 

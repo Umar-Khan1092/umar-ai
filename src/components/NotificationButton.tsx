@@ -31,11 +31,24 @@ export const NotificationButton: React.FC = () => {
           setIsNativeCapacitor(true);
           // Check native permissions
           import('@capacitor/push-notifications').then(({ PushNotifications }) => {
-            PushNotifications.checkPermissions().then(permStatus => {
+            PushNotifications.checkPermissions().then(async permStatus => {
               if (permStatus.receive === 'granted') {
                 setPermissionState('granted');
                 const hasToken = localStorage.getItem('fcm_token_synced');
                 if (hasToken) setIsSubscribed(true);
+                
+                // CRITICAL: Always ensure the channel exists even if already subscribed
+                try {
+                  await PushNotifications.createChannel({
+                    id: 'high_priority_alerts',
+                    name: 'High Priority Alerts',
+                    description: 'Important school alerts with sound and vibration',
+                    importance: 5,
+                    visibility: 1,
+                    vibration: true,
+                    sound: 'default'
+                  });
+                } catch(e) { console.log(e); }
               } else if (permStatus.receive === 'denied') {
                 setPermissionState('denied');
               }
