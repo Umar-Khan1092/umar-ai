@@ -85,6 +85,7 @@ export const GuardianDashboard: React.FC = () => {
                 <CheckCircle2 size={22} fill="#16A34A" color="#FFFFFF" />
               </span>
             )}
+          </h2>
         </div>
         <p style={{ marginBottom: '24px', color: 'var(--color-text-muted)' }}>Select a student below to view their profile, academic records, and attendance.</p>
         
