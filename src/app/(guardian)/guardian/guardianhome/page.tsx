@@ -137,23 +137,6 @@ export const GuardianHome: React.FC = () => {
             </span>
           )}
         </h1>
-        {permission !== 'granted' && (
-          <button 
-            onClick={() => {
-              if (typeof window !== 'undefined' && 'Notification' in window) {
-                Notification.requestPermission().then(p => {
-                  setPermission(p);
-                  if (p === 'granted') {
-                    window.location.reload();
-                  }
-                });
-              }
-            }} 
-            style={{ background: '#10B981', border: 'none', color: '#FFF', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 4px rgba(16,185,129,0.2)', transition: 'all 0.2s ease' }}
-          >
-            <Bell size={14} /> Allow Notifications
-          </button>
-        )}
       </div>
       <p style={{ color: '#64748B', margin: '0 0 16px 0', fontSize: '14px' }}>
         Here is the latest update for {activeStudent?.name || 'your child'}.

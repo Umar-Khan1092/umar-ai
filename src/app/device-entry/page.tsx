@@ -9,7 +9,14 @@ export default function DeviceEntry() {
   const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop'>('desktop');
 
   useEffect(() => {
-    // 1. Check if running in standalone PWA (iOS Home Screen)
+    // 1. Check if we are actually inside the Capacitor Native App (e.g. after logout)
+    import('@capacitor/core').then(({ Capacitor }) => {
+      if (Capacitor.isNativePlatform()) {
+        router.push('/login');
+      }
+    }).catch(() => {});
+
+    // 2. Check if running in standalone PWA (iOS Home Screen)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
     
     if (isStandalone) {
