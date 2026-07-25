@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
+import { NotificationButton } from '@/components/NotificationButton';
 
 export const TeacherProfile: React.FC = () => {
   const { user } = useAuth();
@@ -20,61 +21,7 @@ export const TeacherProfile: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'profile'>('dashboard');
   const router = useRouter();
 
-  // Push Notifications States (Task 11)
-  const [pushSupported, setPushSupported] = useState(false);
-  const [pushSubscribed, setPushSubscribed] = useState(false);
-  const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
-      setPushSupported(true);
-      if ('Notification' in window) {
-        setPushPermission(Notification.permission);
-      }
-      navigator.serviceWorker.ready.then(reg => {
-        reg.pushManager.getSubscription().then(sub => {
-          setPushSubscribed(!!sub);
-        });
-      });
-    }
-  }, []);
-
-  const handleTogglePush = async () => {
-    if (pushSubscribed) {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          await sub.unsubscribe();
-          setPushSubscribed(false);
-          alert('Notifications disabled.');
-        }
-      } catch (err) {
-        console.error('Failed to unsubscribe:', err);
-      }
-    } else {
-      if (pushPermission === 'denied') {
-        alert('Notifications are blocked by your browser. Please enable them in your site settings and refresh.');
-        return;
-      }
-      try {
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidKey) throw new Error('VAPID key not configured');
-        
-        const { subscribeToPush, saveSubscriptionToServer } = await import('@/lib/push');
-        const sub = await subscribeToPush(vapidKey);
-        await saveSubscriptionToServer(sub);
-        
-        setPushSubscribed(true);
-        if ('Notification' in window) {
-          setPushPermission(Notification.permission);
-        }
-        alert('Notifications enabled successfully!');
-      } catch (err: any) {
-        alert('Failed to enable notifications: ' + err.message);
-      }
-    }
-  };
+  // Push Notification logic migrated to global NotificationButton component
 
   useEffect(() => {
     if (user?.id) {
@@ -126,49 +73,9 @@ export const TeacherProfile: React.FC = () => {
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>Hi, {staff.name.split(' ')[0]} 👋</h2>
-              {pushSupported && pushSubscribed && (
-                <span 
-                  title="Notifications Enabled" 
-                  style={{ 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    width: '18px', 
-                    height: '18px', 
-                    borderRadius: '50%', 
-                    backgroundColor: '#D1FAE5', 
-                    color: '#065F46', 
-                    fontSize: '11px',
-                    fontWeight: 'bold' 
-                  }}
-                >
-                  ✓
-                </span>
-              )}
+              <NotificationButton />
             </div>
             <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748B' }}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-            {pushSupported && !pushSubscribed && (
-              <button
-                onClick={handleTogglePush}
-                style={{
-                  marginTop: '6px',
-                  backgroundColor: '#3B82F6',
-                  color: 'white',
-                  border: 'none',
-                  padding: '6px 12px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                🔔 Enable Notifications
-              </button>
-            )}
           </div>
         </div>
 
@@ -236,30 +143,6 @@ export const TeacherProfile: React.FC = () => {
             </div>
             <ChevronRight size={20} color="#94A3B8" />
           </div>
-
-          {pushSupported && (
-            <div 
-              onClick={handleTogglePush}
-              style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', padding: '16px', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: pushSubscribed ? '#E0F2FE' : '#FEE2E2', color: pushSubscribed ? '#0369A1' : '#B91C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Bell size={20} />
-                </div>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>
-                    {pushSubscribed ? 'Notifications Enabled' : 'Enable Notifications'}
-                  </h4>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>
-                    {pushSubscribed ? 'You will receive background push notifications' : 'Tap to receive background push alerts'}
-                  </p>
-                </div>
-              </div>
-              <div style={{ width: '36px', height: '20px', borderRadius: '10px', backgroundColor: pushSubscribed ? '#10B981' : '#CBD5E1', position: 'relative', transition: 'all 0.2s ease', flexShrink: 0 }}>
-                <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: pushSubscribed ? '18px' : '2px', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );

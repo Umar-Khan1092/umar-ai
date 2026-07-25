@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useGuardian } from '@/context/GuardianContext';
 import { User, LogOut, ChevronRight, CheckCircle2, Bell } from 'lucide-react';
- // Reuse some card styles
 import { supabase } from '@/lib/supabase';
+import { NotificationButton } from '@/components/NotificationButton';
 
 export const GuardianDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -14,16 +14,9 @@ export const GuardianDashboard: React.FC = () => {
   const router = useRouter();
   const [students, setStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [permission, setPermission] = useState<string>('default');
   
   const [instituteName, setInstituteName] = useState('');
   const [instituteLogo, setInstituteLogo] = useState('');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPermission(Notification.permission);
-    }
-  }, []);
 
   useEffect(() => {
     if (user?.role === 'Guardian') {
@@ -80,11 +73,7 @@ export const GuardianDashboard: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             Welcome, {user?.name || 'Guardian'}!
-            {permission === 'granted' && (
-              <span style={{ color: '#16A34A', display: 'inline-flex', alignItems: 'center' }} title="Notifications Enabled">
-                <CheckCircle2 size={22} fill="#16A34A" color="#FFFFFF" />
-              </span>
-            )}
+            <NotificationButton />
           </h2>
         </div>
         <p style={{ marginBottom: '24px', color: 'var(--color-text-muted)' }}>Select a student below to view their profile, academic records, and attendance.</p>

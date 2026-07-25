@@ -28,7 +28,6 @@ import "../components/ui/Input.css";
 import "../components/ui/SearchableSelect.css";
 
 import { AuthProvider } from "@/context/AuthContext";
-import { PushNotificationManager } from "@/components/PushNotificationManager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,7 +63,6 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <AuthProvider>
           {children}
-          <PushNotificationManager />
         </AuthProvider>
         <script
           dangerouslySetInnerHTML={{

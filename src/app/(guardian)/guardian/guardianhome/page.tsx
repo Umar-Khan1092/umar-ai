@@ -7,6 +7,7 @@ import { useGuardian } from '@/context/GuardianContext';
 import { CheckSquare, FileSpreadsheet, Banknote, Bell, Calendar, MessageCircle, Send, Users, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { triggerWebPush } from '@/lib/push';
+import { NotificationButton } from '@/components/NotificationButton';
 
 export const GuardianHome: React.FC = () => {
   const { user } = useAuth();
@@ -16,13 +17,6 @@ export const GuardianHome: React.FC = () => {
   const [adminRemark, setAdminRemark] = useState('');
   const [sendingAdminRemark, setSendingAdminRemark] = useState(false);
   const [, setRecentActivity] = useState<any[]>([]);
-  const [permission, setPermission] = useState<string>('default');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPermission(Notification.permission);
-    }
-  }, []);
 
   const handleSendAdminRemark = async () => {
     if (!adminRemark.trim() || !activeStudent) return;
@@ -131,11 +125,7 @@ export const GuardianHome: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: '24px', color: '#1E293B', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
           Welcome {user?.name || 'Guardian'}
-          {permission === 'granted' && (
-            <span style={{ color: '#16A34A', display: 'inline-flex', alignItems: 'center' }} title="Notifications Enabled">
-              <CheckCircle2 size={22} fill="#16A34A" color="#FFFFFF" />
-            </span>
-          )}
+          <NotificationButton />
         </h1>
       </div>
       <p style={{ color: '#64748B', margin: '0 0 16px 0', fontSize: '14px' }}>

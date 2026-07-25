@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminSupabase, supabase } from '@/lib/supabase';
+import { NotificationButton } from '@/components/NotificationButton';
 
 
 const db = adminSupabase || supabase;
@@ -136,7 +137,10 @@ export const Dashboard: React.FC = () => {
     <div className="dashboard">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 className="page-title">Dashboard</h1>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            Dashboard
+            <NotificationButton />
+          </h1>
           <p className="caption">Live overview of school operations and daily metrics.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--color-text-muted)', paddingTop: '8px' }}>

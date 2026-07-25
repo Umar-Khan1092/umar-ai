@@ -277,6 +277,12 @@ export async function POST(req: Request) {
         title: displayTitle,
         body: finalMessage,
       },
+      android: {
+        priority: 'high' as const,
+        notification: {
+          sound: 'default'
+        }
+      },
       data: {
         url: url || '/',
         category: category || 'general'
