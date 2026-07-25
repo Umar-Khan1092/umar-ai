@@ -238,8 +238,43 @@ export const TakeAttendance: React.FC = () => {
         if (error) throw error;
       }
 
-      setStatusMsg({type: 'success', message: submitToAdmin ? 'Attendance submitted to Admin!' : 'Draft saved successfully!'});
-      if (submitToAdmin) setRecordStatus('Submitted');
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        const dateFormatted = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        
+        // Auto-notify parents for Absent/Leave students
+        if (submitToAdmin) {
+          const notificationsToSend = finalRecords.filter(r => r.status === 'Absent' || r.status === 'Leave');
+          await Promise.all(notificationsToSend.map(async (r: any) => {
+            const title = `📅 Attendance Alert: ${r.status}`;
+            const message = `Dear Parent, your child ${r.student_name || 'Student'} (${selectedClass} - ${selectedSection}) was marked ${r.status} today (${dateFormatted}). Please ensure to contact the administration if you have not requested leave.`;
+            
+            try {
+              await fetch('/api/push/send', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  userIds: ['parent_' + r.student_id],
+                  title,
+                  message,
+                  category: 'Attendance',
+                  url: '/guardian/guardianhome'
+                })
+              });
+            } catch (err) {
+              console.error('Failed to notify parent for', r.student_name, err);
+            }
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to process notifications', err);
+      }
+
+      setStatusMsg({type: 'success', message: submitToAdmin ? 'Attendance published and parents notified!' : 'Draft saved successfully!'});
+      if (submitToAdmin) setRecordStatus('Published');
       setTimeout(() => setStatusMsg({type: null, message: ''}), 3000);
     } catch(err: any) {
       setStatusMsg({type: 'error', message: err.message});
@@ -623,12 +658,12 @@ export const TakeAttendance: React.FC = () => {
                 {isLocked ? (
                   <button disabled style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', padding: '10px 8px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, backgroundColor: '#94A3B8', color: 'white', border: 'none', cursor: 'not-allowed', whiteSpace: 'nowrap' }}>
                     <CheckCircle2 size={16} />
-                    Already Submitted
+                    Published
                   </button>
                 ) : (
                   <button className="premium-btn" onClick={() => handleSave(true)} disabled={isSaving} style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', padding: '10px 8px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, backgroundColor: 'var(--tp-primary, #2563EB)', color: 'white', border: 'none', boxShadow: 'var(--tp-shadow-soft)', whiteSpace: 'nowrap' }}>
                     <CheckCircle2 size={16} />
-                    Submit Admin
+                    Publish & Notify
                   </button>
                 )}
               </div>

@@ -280,6 +280,7 @@ export async function POST(req: Request) {
       android: {
         priority: 'high' as const,
         notification: {
+          channelId: 'high_priority_alerts',
           sound: 'default'
         }
       },

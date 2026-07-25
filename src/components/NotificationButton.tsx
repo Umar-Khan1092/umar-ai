@@ -102,6 +102,21 @@ export const NotificationButton: React.FC = () => {
         }
         
         if (permStatus.receive === 'granted') {
+          // Explicitly create a high-importance channel for Android 8.0+ ringtones
+          try {
+            await PushNotifications.createChannel({
+              id: 'high_priority_alerts',
+              name: 'High Priority Alerts',
+              description: 'Important school alerts with sound and vibration',
+              importance: 5,
+              visibility: 1,
+              vibration: true,
+              sound: 'default' // requests the default notification sound
+            });
+          } catch(e) {
+            console.log('Error creating push channel', e);
+          }
+
           await PushNotifications.register();
           // Wait up to 5 seconds for the token event
           token = await new Promise<string | null>((resolve) => {

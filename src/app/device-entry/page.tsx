@@ -12,6 +12,7 @@ export default function DeviceEntry() {
     // 1. Check if we are actually inside the Capacitor Native App (e.g. after logout)
     import('@capacitor/core').then(({ Capacitor }) => {
       if (Capacitor.isNativePlatform()) {
+        document.cookie = "is_standalone_pwa=true; path=/; max-age=" + 60*60*24*365;
         router.push('/login');
       }
     }).catch(() => {});
@@ -55,9 +56,19 @@ export default function DeviceEntry() {
               <h3 style={{ marginBottom: '10px' }}>Android App Required</h3>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>You must install our native Android app to receive mandatory school push notifications.</p>
             </div>
-            <button onClick={handleDownloadApk} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '15px' }}>
+            <button onClick={() => {
+              // Set a cookie so they aren't forced back here immediately after downloading
+              document.cookie = "is_standalone_pwa=true; path=/; max-age=" + 60*60*24*365;
+              handleDownloadApk();
+            }} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '15px' }}>
               <Download size={20} />
               Download Android APK
+            </button>
+            <button onClick={() => {
+              document.cookie = "is_standalone_pwa=true; path=/; max-age=" + 60*60*24*365;
+              router.push('/login');
+            }} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer', marginTop: '10px' }}>
+              Already installed? Continue to Login →
             </button>
           </div>
         )}
