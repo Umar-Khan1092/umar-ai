@@ -158,10 +158,14 @@ export default function NotificationsPage() {
         if (composeForm.selectedClasses.length > 0) {
           const classStudents = availableStudents.filter(s => composeForm.selectedClasses.includes(s.class_name || (s as any).academic_class));
           if (classStudents.length > 0) {
-            payload.userIds = classStudents.map(s => s.id);
+            // Prefix with parent_ so backend resolves student IDs -> guardian Auth IDs
+            payload.userIds = classStudents.map((s: any) => 'parent_' + s.id);
           }
         }
-        payload.roles = ['Guardian'];
+        // Only add roles if no specific userIds - else we'd broadcast to all guardians instead of targeted ones
+        if (!payload.userIds || payload.userIds.length === 0) {
+          payload.roles = ['Guardian'];
+        }
       }
 
       const res = await fetch('/api/push/send', {

@@ -238,9 +238,9 @@ export const AttendanceHistory: React.FC = () => {
 
       if (mode === 'student') {
         currentList.forEach(item => {
-          const student = allStudents.find(s => s.id === item.student_id);
-          if (student) {
-            userIds.push(student.guardian_id || ('parent_' + student.id));
+          // Always use parent_ prefix so backend consistently resolves student_id → guardian_id → push subscription
+          if (item.student_id) {
+            userIds.push('parent_' + item.student_id);
           }
         });
       } else {

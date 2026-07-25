@@ -276,17 +276,30 @@ export async function POST(req: Request) {
     }
 
     if (!subscriptions || subscriptions.length === 0) {
-      return NextResponse.json({ success: true, sent: 0 });
+      console.log(`[PUSH/SEND] No subscriptions found for resolvedUserIds=${JSON.stringify(resolvedUserIds)} roles=${JSON.stringify(roles)}`);
+      return NextResponse.json({ success: true, sent: 0, debug: 'no_subscriptions_found' });
     }
 
     // Extract FCM tokens from subscriptions
-    const fcmTokens = subscriptions.map((sub: any) => sub.endpoint).filter(Boolean);
+    // CRITICAL: Filter out legacy v1 URLs (https://fcm.googleapis.com/fcm/send/...) — these are permanently deprecated
+    const allTokens = subscriptions.map((sub: any) => sub.endpoint).filter(Boolean);
+    const fcmTokens = allTokens.filter((t: string) => !t.startsWith('https://'));
+    const legacyTokensFound = allTokens.filter((t: string) => t.startsWith('https://'));
+    
+    if (legacyTokensFound.length > 0) {
+      console.warn(`[PUSH/SEND] Found ${legacyTokensFound.length} legacy FCM v1 tokens (deprecated). Auto-deleting...`);
+      // Auto-delete legacy tokens from database
+      await adminSupabase!.from('push_subscriptions').delete().in('endpoint', legacyTokensFound);
+    }
+
+    console.log(`[PUSH/SEND] Dispatching to ${fcmTokens.length} valid FCM tokens (${legacyTokensFound.length} legacy tokens deleted)`);
 
     if (fcmTokens.length === 0) {
-      return NextResponse.json({ success: true, sent: 0 });
+      return NextResponse.json({ success: true, sent: 0, debug: 'all_tokens_were_legacy_format' });
     }
 
     // Dispatch via Firebase Admin SDK
+    // CRITICAL: Android payload must include all fields for background/killed-app delivery
     const fcmMessage = {
       notification: {
         title: displayTitle,
@@ -294,41 +307,58 @@ export async function POST(req: Request) {
       },
       android: {
         priority: 'high' as const,
+        ttl: 86400, // Deliver for up to 24 hours even if device is offline
         notification: {
           channelId: 'high_priority_alerts',
-          sound: 'default'
+          sound: 'default',
+          defaultVibrateTimings: true,
+          visibility: 'public' as const,
         }
       },
       data: {
         url: url || '/',
-        category: category || 'general'
+        category: category || 'general',
+        title: displayTitle,
+        body: finalMessage,
       },
       tokens: fcmTokens
     };
 
+    console.log(`[PUSH/SEND] FCM Payload: ${JSON.stringify({ title: displayTitle, tokens: fcmTokens.length, channelId: 'high_priority_alerts' })}`);
+    
     const fcmResponse = await getMessaging().sendEachForMulticast(fcmMessage);
+    
+    console.log(`[PUSH/SEND] FCM Response: successCount=${fcmResponse.successCount} failureCount=${fcmResponse.failureCount}`);
     
     // Cleanup invalid FCM tokens
     const failedTokens: string[] = [];
     fcmResponse.responses.forEach((resp, idx) => {
       if (!resp.success) {
         const errCode = resp.error?.code;
+        console.error(`[PUSH/SEND] Token ${fcmTokens[idx]?.substring(0,30)}... failed: code=${errCode} msg=${resp.error?.message}`);
         if (errCode === 'messaging/invalid-registration-token' || errCode === 'messaging/registration-token-not-registered') {
           failedTokens.push(fcmTokens[idx]);
-        } else {
-          console.error('FCM Send Error for token:', fcmTokens[idx], resp.error);
         }
+      } else {
+        console.log(`[PUSH/SEND] ✓ Token ${fcmTokens[idx]?.substring(0,30)}... delivered. MessageID=${resp.messageId}`);
       }
     });
 
     if (failedTokens.length > 0) {
+      console.log(`[PUSH/SEND] Deleting ${failedTokens.length} stale tokens from database`);
       // Delete invalid tokens from Supabase
-      await adminSupabase.from('push_subscriptions').delete().in('endpoint', failedTokens);
+      await adminSupabase!.from('push_subscriptions').delete().in('endpoint', failedTokens);
     }
 
-    return NextResponse.json({ success: true, sent: fcmResponse.successCount });
+    return NextResponse.json({ 
+      success: true, 
+      sent: fcmResponse.successCount,
+      failed: fcmResponse.failureCount,
+      recipients: resolvedUserIds.length,
+      tokens_tested: fcmTokens.length,
+    });
   } catch (err: any) {
-    console.error('FCM push error:', err);
+    console.error('[PUSH/SEND] Fatal error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
