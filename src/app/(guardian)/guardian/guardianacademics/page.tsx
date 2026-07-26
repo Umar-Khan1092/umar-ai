@@ -116,7 +116,7 @@ export const GuardianAcademics: React.FC = () => {
       });
 
       triggerWebPush({
-        userIds: [remarkTarget.teacher_id],
+        userIds: ['staff_' + remarkTarget.teacher_id],
         roles: ['Admin'],
         title: `Remark from Parent of ${activeStudent.name}`,
         message: remarkMessage,

@@ -162,19 +162,22 @@ export const NotificationButton: React.FC = () => {
             await PushNotifications.removeAllListeners();
           } catch(e) {}
 
-          await PushNotifications.register();
-          // Wait up to 5 seconds for the token event
-          token = await new Promise<string | null>((resolve) => {
+           // Set up listeners first before registering to avoid race conditions where event fires before promise attaches listener
+          const tokenPromise = new Promise<string | null>((resolve) => {
             const timeout = setTimeout(() => resolve(null), 5000);
             PushNotifications.addListener('registration', (t) => {
               clearTimeout(timeout);
               resolve(t.value);
             });
-            PushNotifications.addListener('registrationError', () => {
+            PushNotifications.addListener('registrationError', (err) => {
+              console.error('Registration error callback:', err);
               clearTimeout(timeout);
               resolve(null);
             });
           });
+
+          await PushNotifications.register();
+          token = await tokenPromise;
           if (token) {
             setPermissionState('granted');
           }
