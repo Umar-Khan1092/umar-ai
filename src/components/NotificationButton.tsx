@@ -19,7 +19,12 @@ const firebaseConfig = {
 export const NotificationButton: React.FC = () => {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('fcm_token_synced') === 'true';
+    }
+    return false;
+  });
   const [permissionState, setPermissionState] = useState<NotificationPermission>('default');
   const [isNativeCapacitor, setIsNativeCapacitor] = useState(false);
 

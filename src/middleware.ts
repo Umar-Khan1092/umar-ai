@@ -8,7 +8,7 @@ export function middleware(request: NextRequest) {
   if (url.pathname === '/login' || url.pathname === '/') {
     const userAgent = request.headers.get('user-agent') || '';
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-    const isCapacitor = userAgent.includes('CapacitorApp');
+    const isCapacitor = /Capacitor/i.test(userAgent);
     
     // Check if the PWA has verified it is running in standalone mode
     const isVerifiedPWA = request.cookies.get('is_standalone_pwa')?.value === 'true';

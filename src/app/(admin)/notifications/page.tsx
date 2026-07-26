@@ -109,7 +109,7 @@ export default function NotificationsPage() {
       if (tab === 'compose') {
         const [settingsRes, studentsRes, staffRes] = await Promise.all([
           dbClient.from('settings').select('*').eq('key', 'app_settings').single(),
-          dbClient.from('students').select('id, name, class_name, section').neq('status', 'Struck Off'),
+          dbClient.from('students').select('id, name, academic_class, section').neq('status', 'Struck Off'),
           dbClient.from('staff').select('id, name, role')
         ]);
         if (settingsRes.data?.value?.classes) {

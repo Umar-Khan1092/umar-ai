@@ -33,6 +33,8 @@ export default function DeviceEntry() {
       setDeviceType('ios');
     } else if (/Android/.test(ua)) {
       setDeviceType('android');
+    } else {
+      router.push('/login');
     }
   }, [router]);
 

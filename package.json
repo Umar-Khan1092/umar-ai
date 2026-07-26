@@ -14,7 +14,6 @@
     "@supabase/supabase-js": "^2.110.7",
     "core-js": "^3.37.1",
     "firebase": "^11.2.0",
-    "firebase-admin": "^14.2.0",
     "framer-motion": "^12.42.2",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
@@ -30,6 +29,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "firebase-admin": "^14.2.0",
     "typescript": "^5"
   }
 }

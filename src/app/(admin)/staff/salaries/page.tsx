@@ -110,7 +110,7 @@ export const StaffSalaries: React.FC = () => {
       fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
-        body: JSON.stringify({ userIds: [confirmSlip.staff_id], title: `💰 Salary Disbursed`, message: `Your salary for ${formatMonthName(confirmSlip.month)} has been disbursed.`, url: '/teacher/profile', skipHistory: true })
+        body: JSON.stringify({ userIds: ['staff_' + confirmSlip.staff_id], title: `💰 Salary Disbursed`, message: `Your salary for ${formatMonthName(confirmSlip.month)} has been disbursed.`, url: '/teacher/profile', skipHistory: true })
       }).catch(e => console.error(e));
 
       setSlips(prev => prev.map(s => s.id === slipId ? { ...s, status: 'Paid', payment_date: new Date().toISOString() } : s));

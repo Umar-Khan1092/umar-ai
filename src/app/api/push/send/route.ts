@@ -58,6 +58,7 @@ export async function POST(req: Request) {
 
     // Resolve any student/staff/parent IDs to their corresponding push subscription user IDs
     let resolvedUserIds: string[] = [];
+    console.log(`[PUSH/SEND] Incoming request userIds: ${JSON.stringify(userIds)}, roles: ${JSON.stringify(roles)}`);
     if (userIds && userIds.length > 0) {
       const studentIdsToLookup: string[] = [];
       const staffIdsToLookup: string[] = [];
@@ -81,12 +82,20 @@ export async function POST(req: Request) {
         }
       });
 
+      console.log(`[PUSH/SEND] studentIdsToLookup: ${JSON.stringify(studentIdsToLookup)}`);
+      console.log(`[PUSH/SEND] staffIdsToLookup: ${JSON.stringify(staffIdsToLookup)}`);
+
       // 1. Resolve student IDs to their guardian_id (parent Auth ID)
       if (studentIdsToLookup.length > 0) {
-        const { data: studentRecords } = await adminSupabase
+        const { data: studentRecords, error: studErr } = await adminSupabase
           .from('students')
           .select('id, guardian_id')
           .in('id', studentIdsToLookup);
+        
+        if (studErr) {
+          console.error(`[PUSH/SEND] Student lookup DB error:`, studErr);
+        }
+        console.log(`[PUSH/SEND] Student records resolved: ${JSON.stringify(studentRecords)}`);
         
         if (studentRecords) {
           studentRecords.forEach((s: any) => {
@@ -99,16 +108,24 @@ export async function POST(req: Request) {
 
       // 2. Resolve staff IDs to their Auth user_id via username (email)
       if (staffIdsToLookup.length > 0) {
-        const { data: staffRecords } = await adminSupabase
+        const { data: staffRecords, error: staffErr } = await adminSupabase
           .from('staff')
           .select('id, username')
           .in('id', staffIdsToLookup);
+        
+        if (staffErr) {
+          console.error(`[PUSH/SEND] Staff lookup DB error:`, staffErr);
+        }
+        console.log(`[PUSH/SEND] Staff records resolved: ${JSON.stringify(staffRecords)}`);
         
         if (staffRecords && staffRecords.length > 0) {
           const emails = staffRecords.map((s: any) => s.username).filter(Boolean);
           if (emails.length > 0) {
             // Fetch auth users to map their emails to auth IDs
-            const { data: authUsers } = await adminSupabase.auth.admin.listUsers();
+            const { data: authUsers, error: authErr } = await adminSupabase.auth.admin.listUsers();
+            if (authErr) {
+              console.error(`[PUSH/SEND] Auth listUsers error:`, authErr);
+            }
             if (authUsers && authUsers.users) {
               authUsers.users.forEach((u: any) => {
                 if (u.email && emails.includes(u.email) && isValidUUID(u.id)) {
@@ -122,6 +139,7 @@ export async function POST(req: Request) {
 
       // Deduplicate resolved IDs and make sure they are all clean UUIDs
       resolvedUserIds = Array.from(new Set(resolvedUserIds)).filter(isValidUUID);
+      console.log(`[PUSH/SEND] Final resolvedUserIds to fetch tokens: ${JSON.stringify(resolvedUserIds)}`);
     }
 
     // Fetch settings for dynamic branding

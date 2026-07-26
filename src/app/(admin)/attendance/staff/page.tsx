@@ -89,7 +89,7 @@ export const AdminStaffAttendance: React.FC = () => {
                   title: `Attendance: ${r.status} — ${dateFormatted}`,
                   message,
                   category: 'Attendance',
-                  userIds: [r.staff_id],
+                  userIds: ['staff_' + r.staff_id],
                 })
               }).catch(() => {});
             }
