@@ -52,6 +52,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
+      console.warn('[PUSH/SEND] CRITICAL WARNING: Neither SUPABASE_SERVICE_ROLE_KEY nor NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY is defined in the server environment. Row-Level Security (RLS) will prevent fetching other users tokens. Push notifications will fail.');
+    }
+
     const isValidUUID = (uuid: string) => {
       return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
     };
@@ -214,13 +218,22 @@ export async function POST(req: Request) {
       const historyPayload: any[] = [];
       if (userIds && userIds.length > 0) {
         userIds.forEach((id: string) => {
-          historyPayload.push({
-            recipient_id: id,
-            category: category || 'Announcements',
-            title: displayTitle,
-            message: finalMessage,
-            url
-          });
+          let cleanId = id;
+          if (id.startsWith('parent_')) {
+            cleanId = id.replace('parent_', '');
+          } else if (id.startsWith('staff_')) {
+            cleanId = id.replace('staff_', '');
+          }
+          
+          if (isValidUUID(cleanId)) {
+            historyPayload.push({
+              recipient_id: cleanId,
+              category: category || 'Announcements',
+              title: displayTitle,
+              message: finalMessage,
+              url
+            });
+          }
         });
       } else if (roles && roles.length > 0) {
         roles.forEach((r: string) => {
@@ -325,19 +338,15 @@ export async function POST(req: Request) {
       },
       android: {
         priority: 'high' as const,
-        ttl: 86400, // Deliver for up to 24 hours even if device is offline
         notification: {
           channelId: 'high_priority_alerts',
           sound: 'default',
           defaultVibrateTimings: true,
-          visibility: 'public' as const,
         }
       },
       data: {
         url: url || '/',
         category: category || 'general',
-        title: displayTitle,
-        body: finalMessage,
       },
       tokens: fcmTokens
     };

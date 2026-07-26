@@ -74,6 +74,19 @@ export const NotificationButton: React.FC = () => {
                   console.error('Push registration error:', error);
                 });
 
+                PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                  console.log('Push received in foreground:', notification);
+                });
+
+                PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+                  console.log('Push action performed:', notification);
+                  const data = notification.notification.data;
+                  const url = data?.url;
+                  if (url) {
+                    window.location.href = url;
+                  }
+                });
+
                 // Request registration token
                 await PushNotifications.register();
               } else if (permStatus.receive === 'denied') {
@@ -161,6 +174,20 @@ export const NotificationButton: React.FC = () => {
           try {
             await PushNotifications.removeAllListeners();
           } catch(e) {}
+
+          // Add the listeners back so they remain active
+          PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            console.log('Push received in foreground:', notification);
+          });
+
+          PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+            console.log('Push action performed:', notification);
+            const data = notification.notification.data;
+            const url = data?.url;
+            if (url) {
+              window.location.href = url;
+            }
+          });
 
            // Set up listeners first before registering to avoid race conditions where event fires before promise attaches listener
           const tokenPromise = new Promise<string | null>((resolve) => {
