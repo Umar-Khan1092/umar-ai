@@ -450,7 +450,7 @@ export const FeeManagement: React.FC = () => {
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
-          body: JSON.stringify({ userIds: ['parent_' + paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', skipHistory: true })
+          body: JSON.stringify({ userIds: ['parent_' + paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', category: 'Finance', skipHistory: true })
         }).catch(e => console.error(e));
       } else if (newStatus === 'Partial') {
         const remainingStr = (paymentVoucher.total_amount - newAmountPaid).toLocaleString();
@@ -463,7 +463,7 @@ export const FeeManagement: React.FC = () => {
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
-          body: JSON.stringify({ userIds: ['parent_' + paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', skipHistory: true })
+          body: JSON.stringify({ userIds: ['parent_' + paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', category: 'Finance', skipHistory: true })
         }).catch(e => console.error(e));
       }
 
@@ -532,6 +532,12 @@ export const FeeManagement: React.FC = () => {
         const userIds = targetVouchers.map((v: any) => v.student_id).filter(Boolean);
         if (userIds.length > 0) {
           const authData = await supabase.auth.getSession();
+          const isPending = reportsView === 'pending';
+          const title = isPending ? 'Fee Payment Reminder' : 'Fee Payment Confirmed';
+          const message = isPending
+            ? `Dear Parent/Guardian, this is a reminder that the monthly fee for ${monthLabel} is pending.`
+            : `Dear Parent/Guardian, we have received the fee payment for ${monthLabel}. Thank you.`;
+
           await fetch('/api/push/send', {
             method: 'POST',
             headers: {
@@ -540,8 +546,8 @@ export const FeeManagement: React.FC = () => {
             },
             body: JSON.stringify({
               userIds: userIds.map((id: string) => 'parent_' + id),
-              title: 'New Fee Invoice',
-              message: 'A new fee invoice has been generated for your child. Please check the portal.',
+              title,
+              message,
               url: '/guardian/guardianfees',
               category: 'Finance',
               skipHistory: true

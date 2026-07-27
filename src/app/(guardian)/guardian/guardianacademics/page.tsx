@@ -121,7 +121,13 @@ export const GuardianAcademics: React.FC = () => {
         title: `Remark from Parent of ${activeStudent.name}`,
         message: remarkMessage,
         url: '/admin-notices',
-        category: 'Chat'
+        category: 'Chat',
+        metadata: {
+          subject: remarkTarget.subject,
+          className: activeStudent.academic_class,
+          section: activeStudent.section,
+          studentName: activeStudent.name
+        }
       });
 
       setRemarkMessage('');

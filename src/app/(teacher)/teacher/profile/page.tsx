@@ -18,7 +18,8 @@ export const TeacherProfile: React.FC = () => {
   const [staff, setStaff] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'dashboard' | 'profile'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'profile' | 'attendance'>('dashboard');
+  const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
   const router = useRouter();
 
   // Push Notification logic migrated to global NotificationButton component
@@ -45,6 +46,17 @@ export const TeacherProfile: React.FC = () => {
           const res = await supabase.from('staff').select('*').eq('username', user.email).limit(1).maybeSingle();
           if (res.error) throw res.error;
           setStaff(res.data);
+
+          if (res.data?.id) {
+            const attRes = await supabase
+              .from('staff_attendance')
+              .select('*')
+              .eq('staff_id', res.data.id)
+              .order('date', { ascending: false });
+            if (!attRes.error && attRes.data) {
+              setAttendanceHistory(attRes.data);
+            }
+          }
         } catch (err: any) {
           setError(err.message);
         } finally {
@@ -129,6 +141,26 @@ export const TeacherProfile: React.FC = () => {
           </div>
 
           <div 
+            onClick={() => setView('attendance')}
+            style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', padding: '16px', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '12px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckSquare size={20} />
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>My Attendance</h4>
+                <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>
+                  {attendanceHistory.length > 0 
+                    ? `${Math.round((attendanceHistory.filter(a => a.status === 'Present').length / attendanceHistory.length) * 100)}% Attendance Log`
+                    : 'View attendance log'}
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={20} color="#94A3B8" />
+          </div>
+
+          <div 
             onClick={() => router.push('/teacher/notifications')}
             style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', padding: '16px', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '12px' }}
           >
@@ -143,6 +175,78 @@ export const TeacherProfile: React.FC = () => {
             </div>
             <ChevronRight size={20} color="#94A3B8" />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'attendance') {
+    const total = attendanceHistory.length;
+    const presents = attendanceHistory.filter(a => a.status === 'Present').length;
+    const leaves = attendanceHistory.filter(a => a.status === 'Leave').length;
+    const absents = attendanceHistory.filter(a => a.status === 'Absent').length;
+    const percentage = total > 0 ? Math.round((presents / total) * 100) : 100;
+
+    return (
+      <div className="teacher-page" style={{ backgroundColor: '#FFFFFF', minHeight: '100%', paddingBottom: '24px' }}>
+        <button 
+          onClick={() => setView('dashboard')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0, marginBottom: '16px', fontWeight: 500 }}
+        >
+          <ChevronLeft size={20} /> Back to Dashboard
+        </button>
+
+        <h3 style={{ margin: '0 0 20px 0', fontSize: '17px', fontWeight: 600, color: 'var(--tp-primary, #2563EB)' }}>My Attendance Summary</h3>
+
+        {/* Stats Summary Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+          <div style={{ backgroundColor: '#F0FDF4', borderRadius: '16px', padding: '16px', border: '1px solid #DCFCE7', textAlign: 'center' }}>
+            <h4 style={{ margin: 0, fontSize: '13px', color: '#16A34A' }}>Presents</h4>
+            <span style={{ fontSize: '24px', fontWeight: 700, color: '#166534' }}>{presents}</span>
+          </div>
+          <div style={{ backgroundColor: '#FEF2F2', borderRadius: '16px', padding: '16px', border: '1px solid #FEE2E2', textAlign: 'center' }}>
+            <h4 style={{ margin: 0, fontSize: '13px', color: '#DC2626' }}>Absents</h4>
+            <span style={{ fontSize: '24px', fontWeight: 700, color: '#991B1B' }}>{absents}</span>
+          </div>
+          <div style={{ backgroundColor: '#FFFBEB', borderRadius: '16px', padding: '16px', border: '1px solid #FEF3C7', textAlign: 'center' }}>
+            <h4 style={{ margin: 0, fontSize: '13px', color: '#D97706' }}>Leaves</h4>
+            <span style={{ fontSize: '24px', fontWeight: 700, color: '#92400E' }}>{leaves}</span>
+          </div>
+          <div style={{ backgroundColor: '#EFF6FF', borderRadius: '16px', padding: '16px', border: '1px solid #DBEAFE', textAlign: 'center' }}>
+            <h4 style={{ margin: 0, fontSize: '13px', color: '#2563EB' }}>Rate</h4>
+            <span style={{ fontSize: '24px', fontWeight: 700, color: '#1D4ED8' }}>{percentage}%</span>
+          </div>
+        </div>
+
+        {/* Attendance List */}
+        <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>Recent Logs</h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {attendanceHistory.length > 0 ? attendanceHistory.map((record) => {
+            const isPresent = record.status === 'Present';
+            const isLeave = record.status === 'Leave';
+            const badgeColor = isPresent ? '#22C55E' : isLeave ? '#F59E0B' : '#EF4444';
+            const badgeBg = isPresent ? '#DCFCE7' : isLeave ? '#FEF3C7' : '#FEE2E2';
+
+            return (
+              <div 
+                key={record.id}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}
+              >
+                <div>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B' }}>
+                    {new Date(record.date).toLocaleDateString('en-PK', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: badgeColor, backgroundColor: badgeBg, padding: '4px 10px', borderRadius: '100px' }}>
+                  {record.status}
+                </span>
+              </div>
+            );
+          }) : (
+            <div style={{ padding: '24px', textAlign: 'center', color: '#64748B', border: '1px dashed #CBD5E1', borderRadius: '12px' }}>
+              No attendance logs found.
+            </div>
+          )}
         </div>
       </div>
     );

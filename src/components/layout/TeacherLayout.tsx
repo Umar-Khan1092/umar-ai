@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, CheckSquare, FileSpreadsheet, Calendar, LogOut, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { NotificationButton } from '@/components/NotificationButton';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 const teacherNavItems = [
   { name: 'Home', icon: LayoutDashboard, path: '/teacher/profile' },
@@ -17,6 +19,7 @@ export const TeacherLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname() ?? '';
   const router = useRouter();
   const { logout } = useAuth();
+  const { unreadCount } = useUnreadNotifications();
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -54,6 +57,7 @@ export const TeacherLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#F8FAFC' }}>
+      <NotificationButton silent />
       
       {/* Minimal Top App Bar */}
       <header style={{ 
@@ -141,7 +145,30 @@ export const TeacherLayout = ({ children }: { children: React.ReactNode }) => {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} style={{ color: isActive ? 'var(--tp-primary, #2563EB)' : '#64748B' }} />
+                <div style={{ position: 'relative', display: 'inline-flex' }}>
+                  <Icon size={20} strokeWidth={isActive ? 2.5 : 2} style={{ color: isActive ? 'var(--tp-primary, #2563EB)' : '#64748B' }} />
+                  {item.name === 'Alerts' && unreadCount > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '-6px',
+                      right: '-6px',
+                      backgroundColor: '#EF4444',
+                      color: '#FFFFFF',
+                      borderRadius: '50%',
+                      fontSize: '9px',
+                      minWidth: '15px',
+                      height: '15px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 3px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 0 0 2px #FFFFFF'
+                    }}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
               </div>
               <span style={{ fontSize: '10px', fontWeight: isActive ? 700 : 500, marginTop: '4px', color: isActive ? 'var(--tp-primary, #2563EB)' : '#64748B', transition: 'color 0.3s ease' }}>
                 {item.name}

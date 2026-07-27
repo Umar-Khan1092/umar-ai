@@ -61,7 +61,7 @@ export const saveSubscriptionToServer = async (fcmToken: string) => {
   return res.json();
 };
 
-export const triggerWebPush = async (payload: { userIds?: string[], roles?: string[], title: string, message: string, url: string, category?: string }) => {
+export const triggerWebPush = async (payload: { userIds?: string[], roles?: string[], title: string, message: string, url: string, category?: string, metadata?: any }) => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;

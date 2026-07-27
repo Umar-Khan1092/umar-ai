@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { supabase } from '@/lib/supabase';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 
 export const Login: React.FC = () => {
@@ -14,6 +15,20 @@ export const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (user.role === 'Admin') {
+        router.push('/');
+      } else if (user.role === 'Guardian') {
+        router.push('/guardian');
+      } else {
+        router.push('/teacher/profile');
+      }
+    }
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

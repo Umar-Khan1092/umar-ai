@@ -1,10 +1,13 @@
 import { GuardianMobileLayout } from '@/components/layout/GuardianMobileLayout';
 import { GuardianProvider } from '@/context/GuardianContext';
+import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 
 export default function GuardianLayout({ children }: { children: React.ReactNode }) {
   return (
-    <GuardianProvider>
-      <GuardianMobileLayout>{children}</GuardianMobileLayout>
-    </GuardianProvider>
+    <ProtectedRoute allowedRoles={['Guardian']}>
+      <GuardianProvider>
+        <GuardianMobileLayout>{children}</GuardianMobileLayout>
+      </GuardianProvider>
+    </ProtectedRoute>
   );
 }

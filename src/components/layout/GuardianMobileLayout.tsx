@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, BookOpen, Banknote, Bell, User, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useGuardian } from '@/context/GuardianContext';
-
+import { NotificationButton } from '@/components/NotificationButton';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname() ?? '';
   const { students, activeStudent, setActiveStudentId, isLoading } = useGuardian();
   const [showSwitcher, setShowSwitcher] = useState(false);
+  const { unreadCount } = useUnreadNotifications();
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -53,6 +55,7 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
 
   return (
     <div className="guardian-mobile-app">
+      <NotificationButton silent />
       {/* Sticky Header with Child Switcher */}
       <div className="guardian-mobile-header">
         <div 
@@ -112,7 +115,30 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
                 transition: 'all 0.2s ease'
               }}
             >
-              <Icon size={24} strokeWidth={isActive ? 2.5 : 2} style={{ color: isActive ? '#38BDF8' : 'rgba(255, 255, 255, 0.6)' }} />
+              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon size={24} strokeWidth={isActive ? 2.5 : 2} style={{ color: isActive ? '#38BDF8' : 'rgba(255, 255, 255, 0.6)' }} />
+                {item.id === 'notifications' && unreadCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-6px',
+                    backgroundColor: '#EF4444',
+                    color: '#FFFFFF',
+                    borderRadius: '50%',
+                    fontSize: '9px',
+                    minWidth: '15px',
+                    height: '15px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 3px',
+                    fontWeight: 'bold',
+                    boxShadow: '0 0 0 2px #0F172A'
+                  }}>
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
               <span>{item.label}</span>
             </div>
           );

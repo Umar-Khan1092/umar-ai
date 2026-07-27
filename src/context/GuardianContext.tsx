@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -27,6 +28,7 @@ const GuardianContext = createContext<GuardianContextType | undefined>(undefined
 
 export const GuardianProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const pathname = usePathname();
   const [students, setStudents] = useState<Student[]>([]);
   const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,6 +82,17 @@ export const GuardianProvider: React.FC<{ children: ReactNode }> = ({ children }
       }
     };
   }, [user]);
+
+  // Sync active student from URL search params for deep linking
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlStudentId = params.get('studentId');
+      if (urlStudentId && students.some(s => s.id === urlStudentId)) {
+        setActiveStudentId(urlStudentId);
+      }
+    }
+  }, [students, pathname]);
 
   const activeStudent = students.find(s => s.id === activeStudentId) || null;
 

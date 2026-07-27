@@ -67,6 +67,126 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Unconditional listener: Registers immediately on launch so cold start actions are never lost
+    import('@capacitor/core').then(({ Capacitor }) => {
+      if (Capacitor.isNativePlatform()) {
+        import('@capacitor/push-notifications').then(({ PushNotifications }) => {
+          PushNotifications.addListener('pushNotificationActionPerformed', async (notification) => {
+            console.log('[PUSH/INIT] Action performed immediately:', notification);
+            const data = notification.notification.data;
+            let targetUrl = data?.url;
+            
+            if (targetUrl) {
+              // Dynamically fetch the current session role at the moment of click
+              const { data: { session: activeSession } } = await supabase.auth.getSession();
+              const role = activeSession?.user?.user_metadata?.role || 'Guardian';
+              
+              const isTeacher = role === 'Teacher' || role === 'Staff';
+              const isGuardian = role === 'Guardian';
+              
+              if (isTeacher && targetUrl.startsWith('/guardian')) {
+                if (targetUrl.includes('notification')) {
+                  targetUrl = '/teacher/notifications';
+                } else if (targetUrl.includes('academics')) {
+                  targetUrl = '/teacher/timetable';
+                } else {
+                  targetUrl = '/teacher/profile';
+                }
+              } else if (isGuardian && targetUrl.startsWith('/teacher')) {
+                if (targetUrl.includes('notification')) {
+                  targetUrl = '/guardian/guardiannotifications';
+                } else {
+                  targetUrl = '/guardian/guardianhome';
+                }
+              }
+            }
+            
+            if (targetUrl) {
+              window.location.href = targetUrl;
+            }
+          });
+        });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !user) return;
+
+    const syncToken = async (fcmToken: string) => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!currentSession) return;
+        
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentSession.access_token}`
+          },
+          body: JSON.stringify({ subscription: { fcm_token: fcmToken } })
+        });
+        localStorage.setItem('fcm_token_synced', 'true');
+        localStorage.setItem('fcm_current_token', fcmToken);
+      } catch (err) {
+        console.error('[PUSH/INIT] Failed to save token to server:', err);
+      }
+    };
+
+    import('@capacitor/core').then(({ Capacitor }) => {
+      if (Capacitor.isNativePlatform()) {
+        import('@capacitor/push-notifications').then(({ PushNotifications }) => {
+          PushNotifications.checkPermissions().then(async (perm) => {
+            if (perm.receive === 'prompt') {
+              perm = await PushNotifications.requestPermissions();
+            }
+
+            if (perm.receive === 'granted') {
+              try {
+                await PushNotifications.createChannel({
+                  id: 'high_priority_alerts',
+                  name: 'High Priority Alerts',
+                  description: 'Important school alerts with sound and vibration',
+                  importance: 5,
+                  visibility: 1,
+                  vibration: true,
+                  sound: 'default'
+                });
+              } catch (e) {
+                console.log('[PUSH/INIT] Error creating native channel:', e);
+              }
+
+              try {
+                await PushNotifications.removeAllListeners();
+              } catch (e) {}
+
+              PushNotifications.addListener('registration', (tokenData) => {
+                const currentToken = tokenData.value;
+                const syncedToken = localStorage.getItem('fcm_current_token');
+                if (currentToken !== syncedToken || !localStorage.getItem('fcm_token_synced')) {
+                  syncToken(currentToken);
+                }
+              });
+
+              PushNotifications.addListener('registrationError', (err) => {
+                console.error('[PUSH/INIT] Registration error:', err);
+              });
+
+              PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                console.log('[PUSH/INIT] Foreground notification received:', notification);
+              });
+
+              await PushNotifications.register();
+            }
+          });
+        });
+      }
+    });
+  }, [user]);
+
   const logout = async () => {
     try {
       const fcmToken = localStorage.getItem('fcm_current_token');

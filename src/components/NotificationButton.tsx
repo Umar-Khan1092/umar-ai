@@ -16,7 +16,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-export const NotificationButton: React.FC = () => {
+export const NotificationButton: React.FC<{ silent?: boolean }> = ({ silent = false }) => {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(() => {
@@ -32,68 +32,8 @@ export const NotificationButton: React.FC = () => {
     if (typeof window !== 'undefined') {
       import('@capacitor/core').then(({ Capacitor }) => {
         if (Capacitor.isNativePlatform()) {
-          setIsSupported(true);
           setIsNativeCapacitor(true);
-          // Check native permissions
-          import('@capacitor/push-notifications').then(({ PushNotifications }) => {
-            PushNotifications.checkPermissions().then(async permStatus => {
-              if (permStatus.receive === 'granted') {
-                setPermissionState('granted');
-                
-                // CRITICAL: Always ensure the channel exists
-                try {
-                  await PushNotifications.createChannel({
-                    id: 'high_priority_alerts',
-                    name: 'High Priority Alerts',
-                    description: 'Important school alerts with sound and vibration',
-                    importance: 5,
-                    visibility: 1,
-                    vibration: true,
-                    sound: 'default'
-                  });
-                } catch(e) { console.log('Error creating channel', e); }
-
-                // Clean up duplicate listeners on startup
-                try {
-                  await PushNotifications.removeAllListeners();
-                } catch(e) {}
-
-                // Register push listeners on launch to keep token synced
-                PushNotifications.addListener('registration', (tokenData) => {
-                  const currentToken = tokenData.value;
-                  const syncedToken = localStorage.getItem('fcm_current_token');
-                  
-                  setIsSubscribed(true);
-                  if (currentToken !== syncedToken || !localStorage.getItem('fcm_token_synced')) {
-                    console.log('FCM Token changed/unsynced on startup, saving...');
-                    saveSubscriptionToServer(currentToken);
-                  }
-                });
-
-                PushNotifications.addListener('registrationError', (error) => {
-                  console.error('Push registration error:', error);
-                });
-
-                PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                  console.log('Push received in foreground:', notification);
-                });
-
-                PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-                  console.log('Push action performed:', notification);
-                  const data = notification.notification.data;
-                  const url = data?.url;
-                  if (url) {
-                    window.location.href = url;
-                  }
-                });
-
-                // Request registration token
-                await PushNotifications.register();
-              } else if (permStatus.receive === 'denied') {
-                setPermissionState('denied');
-              }
-            });
-          });
+          return;
         } else {
           // Web check
           if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
@@ -232,7 +172,7 @@ export const NotificationButton: React.FC = () => {
     }
   };
 
-  if (!user || !isSupported) {
+  if (!user || !isSupported || silent || isNativeCapacitor) {
     return null;
   }
   

@@ -18,7 +18,8 @@ export const GuardianFees: React.FC = () => {
             const monthNumStr = String(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].indexOf(v.month) + 1).padStart(2, '0');
             return {
               ...v,
-              fee_month: `${v.year}-${monthNumStr}`,
+              fee_month: `${v.month} ${v.year}`,
+              fee_sort_key: `${v.year}-${monthNumStr}`,
               issue_date: v.created_at ? v.created_at.split('T')[0] : ''
             };
           });
@@ -28,7 +29,7 @@ export const GuardianFees: React.FC = () => {
             const aPaid = (a.paid_amount || 0) >= (a.total_amount || 0);
             const bPaid = (b.paid_amount || 0) >= (b.total_amount || 0);
             if (aPaid === bPaid) {
-              return b.fee_month.localeCompare(a.fee_month);
+              return b.fee_sort_key.localeCompare(a.fee_sort_key);
             }
             return aPaid ? 1 : -1;
           });

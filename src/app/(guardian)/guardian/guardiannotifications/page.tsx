@@ -3,10 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useGuardian } from '@/context/GuardianContext';
 import { supabase } from '@/lib/supabase';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 export const GuardianNotifications: React.FC = () => {
   const { activeStudent } = useGuardian();
   const [notices, setNotices] = useState<any[]>([]);
+  const { markAllAsRead } = useUnreadNotifications();
+
+  useEffect(() => {
+    markAllAsRead();
+  }, []);
 
   useEffect(() => {
     if (activeStudent) {

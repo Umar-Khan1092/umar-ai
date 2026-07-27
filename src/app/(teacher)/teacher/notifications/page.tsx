@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ShieldAlert, MessageCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,11 @@ export const TeacherNotifications: React.FC = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { markAllAsRead } = useUnreadNotifications();
+
+  useEffect(() => {
+    markAllAsRead();
+  }, []);
 
   useEffect(() => {
     const fetchNotifications = async () => {
