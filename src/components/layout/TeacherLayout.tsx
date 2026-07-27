@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, CheckSquare, FileSpreadsheet, Calendar, LogOut, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -115,10 +116,12 @@ export const TeacherLayout = ({ children }: { children: React.ReactNode }) => {
           const isActive = pathname.includes(item.path);
           const Icon = item.icon;
           return (
-            <button
+            <Link
               key={item.name}
-              onClick={() => router.push(item.path)}
+              href={item.path}
+              prefetch={true}
               style={{
+                textDecoration: 'none',
                 background: 'none',
                 border: 'none',
                 display: 'flex',
@@ -173,7 +176,7 @@ export const TeacherLayout = ({ children }: { children: React.ReactNode }) => {
               <span style={{ fontSize: '10px', fontWeight: isActive ? 700 : 500, marginTop: '4px', color: isActive ? 'var(--tp-primary, #2563EB)' : '#64748B', transition: 'color 0.3s ease' }}>
                 {item.name}
               </span>
-            </button>
+            </Link>
           );
         })}
       </nav>

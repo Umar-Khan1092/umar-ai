@@ -1,6 +1,12 @@
-const CACHE_NAME = 'eduerp-v10';
+const CACHE_NAME = 'eduerp-v11';
 const STATIC_ASSETS = [
   '/',
+  '/login',
+  '/guardian',
+  '/teacher/profile',
+  '/teacher/notifications',
+  '/guardian/guardianfees',
+  '/guardian/guardiannotifications',
   '/manifest.json',
   '/logo.webp',
   '/favicon.svg',

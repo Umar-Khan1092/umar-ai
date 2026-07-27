@@ -44,6 +44,7 @@ export const TeacherNotifications: React.FC = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [studentMap, setStudentMap] = useState<Map<string, any>>(new Map());
   const { markAllAsRead } = useUnreadNotifications();
 
   useEffect(() => {
@@ -67,7 +68,17 @@ export const TeacherNotifications: React.FC = () => {
           query = query.or(`and(target_role.eq.Teacher,recipient_id.is.null),recipient_id.eq.${user.id}`);
         }
 
-        const res = await query.order('created_at', { ascending: false });
+        const [res, studentsRes] = await Promise.all([
+          query.order('created_at', { ascending: false }),
+          supabase.from('students').select('id, name, father_name, academic_class, section')
+        ]);
+
+        if (studentsRes.data) {
+          const map = new Map<string, any>();
+          studentsRes.data.forEach(s => map.set(s.id, s));
+          setStudentMap(map);
+        }
+
         if (res.data) setNotifications(res.data);
         setIsLoading(false);
       }
@@ -187,7 +198,15 @@ export const TeacherNotifications: React.FC = () => {
 
                       {/* Header/Title */}
                       <h4 style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>
-                        {n.title || n.display_sender_name || (n.sender_role === 'Admin' ? 'Message from Administration' : (n.sender_role === 'Teacher' ? 'Teacher Remark' : 'Notification'))}
+                        {(() => {
+                          if (n.student_id && studentMap.has(n.student_id)) {
+                            const std = studentMap.get(n.student_id);
+                            const fatherPart = std.father_name ? ` s/o ${std.father_name}` : '';
+                            const classPart = (std.academic_class && std.section) ? ` (${std.academic_class}-${std.section})` : '';
+                            return `Remark for ${std.name}${fatherPart}${classPart}`;
+                          }
+                          return n.title || n.display_sender_name || (n.sender_role === 'Admin' ? 'Message from Administration' : (n.sender_role === 'Teacher' ? 'Teacher Remark' : 'Notification'));
+                        })()}
                       </h4>
 
                       {/* Subject Metadata (Task 8) */}
@@ -200,7 +219,7 @@ export const TeacherNotifications: React.FC = () => {
                       )}
 
                       {/* Student info if present */}
-                      {n.student_name && (
+                      {n.student_name && !n.student_id && (
                         <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
                           RE: {n.student_name} {n.student_class ? `(${n.student_class}-${n.student_section})` : ''}
                         </div>

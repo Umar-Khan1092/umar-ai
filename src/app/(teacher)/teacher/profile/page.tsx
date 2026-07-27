@@ -20,6 +20,13 @@ export const TeacherProfile: React.FC = () => {
   const [error, setError] = useState('');
   const [view, setView] = useState<'dashboard' | 'profile' | 'attendance'>('dashboard');
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
+  const [filterMode, setFilterMode] = useState<'single' | 'range'>('single');
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
+  const [fromMonth, setFromMonth] = useState<number>(() => new Date().getMonth());
+  const [fromYear, setFromYear] = useState<number>(() => new Date().getFullYear());
+  const [toMonth, setToMonth] = useState<number>(() => new Date().getMonth());
+  const [toYear, setToYear] = useState<number>(() => new Date().getFullYear());
   const router = useRouter();
 
   // Push Notification logic migrated to global NotificationButton component
@@ -181,10 +188,27 @@ export const TeacherProfile: React.FC = () => {
   }
 
   if (view === 'attendance') {
-    const total = attendanceHistory.length;
-    const presents = attendanceHistory.filter(a => a.status === 'Present').length;
-    const leaves = attendanceHistory.filter(a => a.status === 'Leave').length;
-    const absents = attendanceHistory.filter(a => a.status === 'Absent').length;
+    // Dynamic real-time filtering based on selected month/year or range
+    const filteredAttendance = attendanceHistory.filter(record => {
+      if (!record.date) return false;
+      const [yr, mn] = record.date.split('-');
+      const recordYear = parseInt(yr);
+      const recordMonth = parseInt(mn) - 1; // 0-indexed
+
+      if (filterMode === 'single') {
+        return recordYear === selectedYear && recordMonth === selectedMonth;
+      } else {
+        const recordSortKey = recordYear * 12 + recordMonth;
+        const fromSortKey = fromYear * 12 + fromMonth;
+        const toSortKey = toYear * 12 + toMonth;
+        return recordSortKey >= fromSortKey && recordSortKey <= toSortKey;
+      }
+    });
+
+    const total = filteredAttendance.length;
+    const presents = filteredAttendance.filter(a => a.status === 'Present').length;
+    const leaves = filteredAttendance.filter(a => a.status === 'Leave').length;
+    const absents = filteredAttendance.filter(a => a.status === 'Absent').length;
     const percentage = total > 0 ? Math.round((presents / total) * 100) : 100;
 
     return (
@@ -195,6 +219,120 @@ export const TeacherProfile: React.FC = () => {
         >
           <ChevronLeft size={20} /> Back to Dashboard
         </button>
+
+        {/* Dynamic Month/Year Selector Calendar Panel */}
+        <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', padding: '16px', border: '1px solid #E2E8F0', marginBottom: '20px' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            📅 Filter Attendance Period
+          </h4>
+          
+          {/* Mode Selector Pill Buttons */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <button
+              onClick={() => setFilterMode('single')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: filterMode === 'single' ? 'var(--tp-primary, #2563EB)' : '#EFF6FF',
+                color: filterMode === 'single' ? '#FFFFFF' : '#2563EB',
+                fontWeight: 600,
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Single Month
+            </button>
+            <button
+              onClick={() => setFilterMode('range')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: filterMode === 'range' ? 'var(--tp-primary, #2563EB)' : '#EFF6FF',
+                color: filterMode === 'range' ? '#FFFFFF' : '#2563EB',
+                fontWeight: 600,
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Date Range
+            </button>
+          </div>
+
+          {/* Conditional Input Selectors */}
+          {filterMode === 'single' ? (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontWeight: 500, fontSize: '13px', outline: 'none' }}
+              >
+                {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, idx) => (
+                  <option key={m} value={idx}>{m}</option>
+                ))}
+              </select>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontWeight: 500, fontSize: '13px', outline: 'none' }}
+              >
+                {[2024, 2025, 2026, 2027].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', width: '45px' }}>From:</span>
+                <select
+                  value={fromMonth}
+                  onChange={(e) => setFromMonth(parseInt(e.target.value))}
+                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '13px' }}
+                >
+                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, idx) => (
+                    <option key={m} value={idx}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  value={fromYear}
+                  onChange={(e) => setFromYear(parseInt(e.target.value))}
+                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '13px' }}
+                >
+                  {[2024, 2025, 2026, 2027].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', width: '45px' }}>To:</span>
+                <select
+                  value={toMonth}
+                  onChange={(e) => setToMonth(parseInt(e.target.value))}
+                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '13px' }}
+                >
+                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, idx) => (
+                    <option key={m} value={idx}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  value={toYear}
+                  onChange={(e) => setToYear(parseInt(e.target.value))}
+                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '13px' }}
+                >
+                  {[2024, 2025, 2026, 2027].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
 
         <h3 style={{ margin: '0 0 20px 0', fontSize: '17px', fontWeight: 600, color: 'var(--tp-primary, #2563EB)' }}>My Attendance Summary</h3>
 
@@ -221,7 +359,7 @@ export const TeacherProfile: React.FC = () => {
         {/* Attendance List */}
         <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>Recent Logs</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {attendanceHistory.length > 0 ? attendanceHistory.map((record) => {
+          {filteredAttendance.length > 0 ? filteredAttendance.map((record) => {
             const isPresent = record.status === 'Present';
             const isLeave = record.status === 'Leave';
             const badgeColor = isPresent ? '#22C55E' : isLeave ? '#F59E0B' : '#EF4444';

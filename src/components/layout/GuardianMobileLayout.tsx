@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, BookOpen, Banknote, Bell, User, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useGuardian } from '@/context/GuardianContext';
@@ -102,17 +103,24 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
           const isActive = pathname.startsWith(item.path) || (item.altPath && pathname.startsWith(item.altPath));
           const Icon = item.icon;
           return (
-            <div 
+            <Link 
               key={item.id} 
+              href={item.path}
+              prefetch={true}
               className={`guardian-nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => router.push(item.path)}
               style={{
+                textDecoration: 'none',
                 background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
                 color: isActive ? '#38BDF8' : 'rgba(255, 255, 255, 0.6)',
                 borderRadius: '12px',
                 padding: '8px 4px',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1
               }}
             >
               <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -140,7 +148,7 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
                 )}
               </div>
               <span>{item.label}</span>
-            </div>
+            </Link>
           );
         })}
       </div>
