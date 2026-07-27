@@ -128,8 +128,9 @@ const NOTIFICATION_TEMPLATES: Record<string, (meta: NotificationMetadata, defaul
   }
 };
 
-// Initialize Firebase Admin
-if (!getApps().length) {
+function ensureFirebaseInitialized(): boolean {
+  if (getApps().length > 0) return true;
+
   try {
     if (process.env.FIREBASE_PRIVATE_KEY) {
       initializeApp({
@@ -140,24 +141,37 @@ if (!getApps().length) {
           privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
         }),
       });
-    } else {
-      const credentialsPath = path.join(process.cwd(), process.env.FIREBASE_ADMIN_CREDENTIALS_PATH || 'edu-erp-system-firebase-adminsdk.json');
-      if (fs.existsSync(credentialsPath)) {
-        const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-        initializeApp({
-          credential: cert(serviceAccount)
-        });
-      } else {
-        console.warn('Firebase Admin SDK: No FIREBASE_PRIVATE_KEY env var and no local JSON credentials found. Push notifications will fail.');
-      }
+      console.log('[PUSH/INIT] Firebase Admin SDK successfully initialized using environment variables.');
+      return true;
     }
+
+    const credentialsPath = path.join(process.cwd(), process.env.FIREBASE_ADMIN_CREDENTIALS_PATH || 'edu-erp-system-firebase-adminsdk.json');
+    if (fs.existsSync(credentialsPath)) {
+      const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+      initializeApp({
+        credential: cert(serviceAccount)
+      });
+      console.log('[PUSH/INIT] Firebase Admin SDK successfully initialized using local JSON file.');
+      return true;
+    }
+
+    console.warn('[PUSH/INIT] Firebase Admin SDK: No FIREBASE_PRIVATE_KEY env var and no local JSON credentials found. Push notifications will fail.');
   } catch (err) {
-    console.error('Failed to initialize Firebase Admin SDK:', err);
+    console.error('[PUSH/INIT] Failed to initialize Firebase Admin SDK:', err);
   }
+  return false;
 }
 
 export async function POST(req: Request) {
   try {
+    if (!ensureFirebaseInitialized()) {
+      console.error('[PUSH/SEND] Error: Firebase Admin SDK is not initialized. Please verify your Vercel Environment Variables: FIREBASE_PRIVATE_KEY, NEXT_PUBLIC_FIREBASE_PROJECT_ID, and FIREBASE_CLIENT_EMAIL.');
+      return NextResponse.json({ 
+        error: 'Firebase Admin SDK not initialized',
+        details: 'Missing Firebase credentials on server. Please configure FIREBASE_PRIVATE_KEY, NEXT_PUBLIC_FIREBASE_PROJECT_ID, and FIREBASE_CLIENT_EMAIL in Vercel environment variables.'
+      }, { status: 500 });
+    }
+
     const { userIds, roles, title, message, url, category, skipHistory, metadata } = await req.json();
 
     console.log(`\n=================== [PUSH/SEND TRIGGERED] ===================`);
