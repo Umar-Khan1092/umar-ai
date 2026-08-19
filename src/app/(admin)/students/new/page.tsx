@@ -55,7 +55,7 @@ export const StudentRegistration: React.FC = () => {
         const res = await dbClient.from('settings').select('*').eq('key', 'app_settings').single();
         if (res.data?.value) {
           const data = res.data.value;
-          setSchoolInfo({ name: data.school_name || 'School Name', logo: data.school_logo || '' });
+          setSchoolInfo({ name: data.institute_name || 'School Name', logo: data.institute_logo || '' });
           setSettingsClasses(data.classes || []);
           setSettingsSections(data.sections || []);
           setClassFees(data.class_fees || {});
@@ -189,7 +189,6 @@ export const StudentRegistration: React.FC = () => {
       const insertPayload: any = {
         name: formData.name,
         father_name: formData.father_name,
-        email: formData.email,
         cnic: formData.cnic,
         dob: formData.dob,
         gender: formData.gender,
@@ -205,6 +204,7 @@ export const StudentRegistration: React.FC = () => {
         guardian_whatsapp: formData.guardian_whatsapp,
         guardian_password: formData.guardian_whatsapp,
         profile_image_url: profileImageUrl,
+        status: 'Active',
       };
 
       // ── Create Supabase Auth user via server API route ──────────────

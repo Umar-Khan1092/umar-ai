@@ -57,7 +57,7 @@ export default function FinanceDashboard() {
       setPayrollData(pRes.data || []);
       setStudentsData(sRes.data || []);
 
-      if (eRes.error && eRes.error.code === '42P01') {
+      if (eRes.error && (eRes.error.code === '42P01' || (eRes.error.message && eRes.error.message.includes('schema cache')))) {
         console.warn('Expenses table missing. Generating empty state.');
         setExpenseData([]);
       } else {

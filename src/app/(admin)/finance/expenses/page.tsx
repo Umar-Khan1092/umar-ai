@@ -41,7 +41,7 @@ export default function ExpenseManagement() {
     const dbClient = adminSupabase || supabase;
     try {
       const { data, error } = await dbClient.from('expenses').select('*').order('expense_date', { ascending: sortOrder === 'asc' });
-      if (error && error.code === '42P01') {
+      if (error && (error.code === '42P01' || (error.message && error.message.includes('schema cache')))) {
         console.warn('Expenses table does not exist. Creating schema is required.');
         setExpenses([]);
       } else if (error) {
@@ -109,7 +109,11 @@ export default function ExpenseManagement() {
       fetchExpenses();
       setTimeout(() => setStatus({ type: null, message: '' }), 3000);
     } catch (err: any) {
-      setStatus({ type: 'error', message: err.message || 'Failed to save expense.' });
+      if (err.message && err.message.includes('schema cache')) {
+        setStatus({ type: 'error', message: 'Expenses table has not been created in the database yet.' });
+      } else {
+        setStatus({ type: 'error', message: err.message || 'Failed to save expense.' });
+      }
     }
   };
 

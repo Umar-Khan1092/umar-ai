@@ -37,7 +37,7 @@ export const StaffRegistration: React.FC = () => {
         const res = await dbClient.from('settings').select('*').eq('key', 'app_settings').single();
         if (res.data?.value) {
           const data = res.data.value;
-          setSchoolInfo({ name: data.school_name || 'School Name', logo: data.school_logo || '' });
+          setSchoolInfo({ name: data.institute_name || 'School Name', logo: data.institute_logo || '' });
         }
       } catch (err) {
         console.error('Failed to load settings:', err);
@@ -68,9 +68,6 @@ export const StaffRegistration: React.FC = () => {
         name: formData.name,
         cnic: formData.cnic,
         phone: formData.whatsapp_number,
-        qualification: formData.qualification,
-        experience: formData.experience,
-        salary_type: formData.salary_type,
         salary: Number(formData.salary),
         status: 'Active',
         join_date: formData.joining_date,

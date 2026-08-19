@@ -145,7 +145,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, items =
           {isCollapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
         </button>
       </div>
-      <div className="sidebar-user-role">{(user as any)?.role === 'Guardian' ? 'Guardian' : ((user as any)?.role || 'User')}</div>
       
       <nav className="sidebar-nav">
         <ul>
