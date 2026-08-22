@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, Search, ArrowLeft, CreditCard, Calendar, Filter, ChevronDown, GraduationCap, AlertCircle, Bell } from 'lucide-react';
+import { CheckCircle, Search, ArrowLeft, CreditCard, Calendar, Filter, ChevronDown, GraduationCap, AlertCircle, Bell, X, User } from 'lucide-react';
 import { HighlightText } from '@/components/ui/HighlightText';
 import { formatDate } from '@/utils/formatDate';
 
@@ -74,7 +74,14 @@ export const FeeManagement: React.FC = () => {
     return () => clearTimeout(handler);
   }, [searchInput]);
   const [sectionFilter, setSectionFilter] = useState('');
-  const [isPaying, setIsPaying] = useState<string | null>(null);
+  const [isPaying, setIsPaying] = useState<boolean>(false);
+  
+  // Modals for Remainings and Paid history
+  const [showRemainingsModal, setShowRemainingsModal] = useState(false);
+  const [selectedStudentForRemainings, setSelectedStudentForRemainings] = useState<any>(null);
+  
+  const [showPaidModal, setShowPaidModal] = useState(false);
+  const [selectedStudentForPaid, setSelectedStudentForPaid] = useState<any>(null);
   
   // State for Month Filter (defaults to current month)
   const [monthFilter, setMonthFilter] = useState(() => {
@@ -94,7 +101,7 @@ export const FeeManagement: React.FC = () => {
 
   // Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentVoucher, setPaymentVoucher] = useState<any>(null);
+  const [paymentStudent, setPaymentStudent] = useState<any>(null);
   const [paymentBreakdown, setPaymentBreakdown] = useState<Record<string, string>>({});
 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -403,77 +410,88 @@ export const FeeManagement: React.FC = () => {
     }
   };
 
-  const handlePay = (voucher: any) => {
-    setPaymentVoucher(voucher);
-    const remaining = (voucher.total_amount || 0) - (voucher.paid_amount || 0);
-    setPaymentBreakdown({ total: Math.max(0, remaining).toString() });
+  const handlePay = (studentGroup: any) => {
+    setPaymentStudent(studentGroup);
+    const initialBreakdown: Record<string, string> = {};
+    studentGroup.pendingVouchers.forEach((v: any) => {
+      initialBreakdown[v.id] = '';
+    });
+    setPaymentBreakdown(initialBreakdown);
     setShowPaymentModal(true);
   };
 
-  const handleBreakdownChange = (_field: string, value: string) => {
+  const handleBreakdownChange = (field: string, value: string) => {
     let sanitized = value.replace(/^0+(?=\d)/, '');
     if (sanitized === '00' || sanitized === '000') sanitized = '0';
-    setPaymentBreakdown({ total: sanitized });
+    setPaymentBreakdown(prev => ({ ...prev, [field]: sanitized }));
   };
 
   const submitPayment = async () => {
-    if (!paymentVoucher) return;
+    if (!paymentStudent) return;
 
-    const amount = parseFloat(paymentBreakdown.total) || 0;
-    if (amount <= 0) { alert('Amount must be greater than 0.'); return; }
-    
-    const remaining = (paymentVoucher.total_amount || 0) - (paymentVoucher.paid_amount || 0);
-    if (amount > remaining) { alert('Received amount cannot exceed the remaining balance.'); return; }
-
-    setIsPaying(paymentVoucher.id);
+    setIsPaying(true);
+    let successCount = 0;
     try {
-      const newAmountPaid = (paymentVoucher.paid_amount || 0) + amount;
-      const newStatus = newAmountPaid >= paymentVoucher.total_amount ? 'Paid' : 'Partial';
-
       const paymentDate = new Date().toISOString().split('T')[0];
-      const { error } = await db.from('fee_vouchers').update({
-        paid_amount: newAmountPaid,
-        status: newStatus,
-        paid_date: paymentDate
-      }).eq('id', paymentVoucher.id);
+      const authData = await supabase.auth.getSession();
 
-      if (error) throw error;
+      for (const v of paymentStudent.pendingVouchers) {
+        const amountStr = paymentBreakdown[v.id];
+        if (!amountStr) continue;
+        const amount = parseFloat(amountStr) || 0;
+        if (amount <= 0) continue;
 
-      // Send receipt notification to parent portal
-      if (newStatus === 'Paid') {
-        const title = `✅ Fee Confirmed — ${paymentVoucher.billing_month || 'Current Month'}`;
-        const message = `Dear Parent/Guardian,\n\nThis is to confirm that the fee payment for ${paymentVoucher.student_name} (${paymentVoucher.class_name} - ${paymentVoucher.section}) has been received.\n\n✅ Amount Paid: ₨${amount.toLocaleString()}\n📅 Payment Date: ${paymentDate}\n\nThank you for your cooperation.\n\nSchool Administration`;
-        await db.from('notifications').insert({
-          title, message, target_role: 'Guardian', student_id: paymentVoucher.student_id
-        });
-        const authData = await supabase.auth.getSession();
-        fetch('/api/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
-          body: JSON.stringify({ userIds: ['parent_' + paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', category: 'Finance', skipHistory: true })
-        }).catch(e => console.error(e));
-      } else if (newStatus === 'Partial') {
-        const remainingStr = (paymentVoucher.total_amount - newAmountPaid).toLocaleString();
-        const title = `⚠️ Partial Fee Received — ${paymentVoucher.billing_month || 'Current Month'}`;
-        const message = `Dear Parent/Guardian,\n\nWe have received a partial payment of ₨${amount.toLocaleString()} for ${paymentVoucher.student_name}.\n\n⚠️ Remaining Balance: ₨${remainingStr}\n📅 Payment Date: ${paymentDate}\n\nPlease clear the remaining balance at your earliest convenience.\n\nSchool Administration`;
-        await db.from('notifications').insert({
-          title, message, target_role: 'Guardian', student_id: paymentVoucher.student_id
-        });
-        const authData = await supabase.auth.getSession();
-        fetch('/api/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
-          body: JSON.stringify({ userIds: ['parent_' + paymentVoucher.student_id], title, message, url: '/guardian/guardianfees', category: 'Finance', skipHistory: true })
-        }).catch(e => console.error(e));
+        const remaining = (v.total_amount || 0) - (v.paid_amount || 0);
+        if (amount > remaining) {
+           throw new Error(`Amount for ${v.billing_month} cannot exceed remaining balance.`);
+        }
+
+        const newAmountPaid = (v.paid_amount || 0) + amount;
+        const newStatus = newAmountPaid >= v.total_amount ? 'Paid' : 'Partial';
+
+        const { error } = await db.from('fee_vouchers').update({
+          paid_amount: newAmountPaid,
+          status: newStatus,
+          paid_date: paymentDate
+        }).eq('id', v.id);
+
+        if (error) throw error;
+        successCount++;
+
+        // Send receipt notification
+        if (newStatus === 'Paid') {
+          const title = `✅ Fee Confirmed — ${v.billing_month}`;
+          const message = `Dear Parent/Guardian,\n\nThis is to confirm that the fee payment for ${v.student_name} (${v.class_name} - ${v.section}) has been received.\n\n✅ Amount Paid: ₨${amount.toLocaleString()}\n📅 Payment Date: ${paymentDate}\n\nThank you for your cooperation.\n\nSchool Administration`;
+          await db.from('notifications').insert({ title, message, target_role: 'Guardian', student_id: v.student_id });
+          fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
+            body: JSON.stringify({ userIds: ['parent_' + v.student_id], title, message, url: '/guardian/guardianfees', category: 'Finance', skipHistory: true })
+          }).catch(e => console.error(e));
+        } else if (newStatus === 'Partial') {
+          const remainingStr = (v.total_amount - newAmountPaid).toLocaleString();
+          const title = `⚠️ Partial Fee Received — ${v.billing_month}`;
+          const message = `Dear Parent/Guardian,\n\nWe have received a partial payment of ₨${amount.toLocaleString()} for ${v.student_name}.\n\n⚠️ Remaining Balance: ₨${remainingStr}\n📅 Payment Date: ${paymentDate}\n\nPlease clear the remaining balance at your earliest convenience.\n\nSchool Administration`;
+          await db.from('notifications').insert({ title, message, target_role: 'Guardian', student_id: v.student_id });
+          fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session?.access_token}` },
+            body: JSON.stringify({ userIds: ['parent_' + v.student_id], title, message, url: '/guardian/guardianfees', category: 'Finance', skipHistory: true })
+          }).catch(e => console.error(e));
+        }
       }
-
-      setShowPaymentModal(false);
-      setPaymentVoucher(null);
-      fetchVouchers();
+      
+      if (successCount > 0) {
+        setShowPaymentModal(false);
+        setPaymentStudent(null);
+        fetchVouchers();
+      } else {
+        alert("Please enter at least one valid payment amount.");
+      }
     } catch (err: any) {
       alert(err.message);
     } finally {
-      setIsPaying(null);
+      setIsPaying(false);
     }
   };
 
@@ -568,9 +586,9 @@ export const FeeManagement: React.FC = () => {
 
   const filteredVouchers = useMemo(() => {
     let result = vouchers.filter(v => 
-      v.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (v.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (v.roll_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.billing_month.toLowerCase().includes(searchQuery.toLowerCase())
+      (v.billing_month || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     if (monthFilter) {
@@ -632,6 +650,101 @@ export const FeeManagement: React.FC = () => {
     }
     return result;
   }, [monthFilteredVouchers, classFilter, sectionFilter, searchQuery]);
+
+  const overallFilteredVouchers = useMemo(() => {
+    let result = vouchers;
+
+    if (monthFilter) {
+      const [yearStr, monthNumStr] = monthFilter.split('-');
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthName = monthNames[parseInt(monthNumStr) - 1];
+      result = result.filter(v => v.month === monthName && v.year === parseInt(yearStr));
+    }
+    
+    if (selectedClassGroup) {
+      result = result.filter(v => v.class_name === selectedClassGroup.className && v.section === selectedClassGroup.section);
+    } else {
+      if (classFilter) {
+        result = result.filter(v => v.class_name === classFilter);
+      }
+      if (sectionFilter) {
+        result = result.filter(v => v.section === sectionFilter);
+      }
+    }
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(v => 
+        (v.student_name && v.student_name.toLowerCase().includes(q)) ||
+        (v.roll_number && v.roll_number.toLowerCase().includes(q)) ||
+        (v.id && v.id.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [vouchers, searchQuery, selectedClassGroup, classFilter, sectionFilter, monthFilter]);
+
+
+  const groupedReportVouchers = useMemo(() => {
+    const groups: Record<string, any> = {};
+    filteredVouchers.forEach(v => {
+      const key = v.student_id;
+      if (!groups[key]) {
+        groups[key] = {
+          student_id: v.student_id,
+          roll_number: v.roll_number,
+          student_name: v.student_name,
+          class_name: v.class_name,
+          section: v.section,
+          total_billed: 0,
+          total_received: 0,
+          total_remaining: 0,
+          statuses: new Set<string>()
+        };
+      }
+      groups[key].total_billed += (v.total_amount || 0);
+      groups[key].total_received += (v.paid_amount || 0);
+      groups[key].total_remaining += ((v.total_amount || 0) - (v.paid_amount || 0));
+      groups[key].statuses.add(v.status);
+    });
+    return Object.values(groups).sort((a: any, b: any) => {
+      if (a.class_name !== b.class_name) return (a.class_name || '').localeCompare(b.class_name || '');
+      if (a.section !== b.section) return (a.section || '').localeCompare(b.section || '');
+      return (a.student_name || '').localeCompare(b.student_name || '');
+    });
+  }, [filteredVouchers]);
+
+  const groupedStudentVouchers = useMemo(() => {
+    const groups: Record<string, any> = {};
+    overallFilteredVouchers.forEach(v => {
+      const key = v.student_id;
+      if (!groups[key]) {
+        groups[key] = {
+          student_id: v.student_id,
+          roll_number: v.roll_number,
+          student_name: v.student_name,
+          class_name: v.class_name,
+          section: v.section,
+          pendingVouchers: [],
+          paidVouchers: [],
+          totalDue: 0
+        };
+      }
+      const remaining = (v.total_amount || 0) - (v.paid_amount || 0);
+      if (remaining > 0) {
+        groups[key].pendingVouchers.push(v);
+        groups[key].totalDue += remaining;
+      }
+      if ((v.paid_amount || 0) > 0) {
+        groups[key].paidVouchers.push(v);
+      }
+    });
+    return Object.values(groups).sort((a: any, b: any) => {
+      if (a.class_name !== b.class_name) return (a.class_name || '').localeCompare(b.class_name || '');
+      if (a.section !== b.section) return (a.section || '').localeCompare(b.section || '');
+      return (a.student_name || '').localeCompare(b.student_name || '');
+    });
+  }, [overallFilteredVouchers]);
 
   return (
     <div className="fee-management-page">
@@ -929,19 +1042,31 @@ export const FeeManagement: React.FC = () => {
                     <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
                   </div>
 
-                  <div className="filter-group" style={{ position: 'relative' }}>
-                    <div 
-                      onClick={() => monthInputRef.current?.showPicker()}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '8px', 
-                        backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', 
-                        padding: '8px 16px', borderRadius: '4px',
-                        color: '#1e40af', fontWeight: 600, fontSize: '13px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Calendar size={16} />
-                      <span>{monthFilter ? new Date(parseInt(monthFilter.split('-')[0]), parseInt(monthFilter.split('-')[1]) - 1).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'All Months'}</span>
+                  <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s' }}>
+                      <div 
+                        onClick={() => monthInputRef.current?.showPicker()}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '8px', 
+                          padding: '8px 12px',
+                          color: monthFilter ? '#1e40af' : '#475569', fontWeight: 600, fontSize: '13px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Calendar size={16} />
+                        <span>{monthFilter ? new Date(parseInt(monthFilter.split('-')[0]), parseInt(monthFilter.split('-')[1]) - 1).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Overall (All Months)'}</span>
+                      </div>
+                      {monthFilter && (
+                        <div 
+                          onClick={(e) => { e.stopPropagation(); setMonthFilter(''); }}
+                          style={{ padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', borderLeft: '1px solid #bfdbfe', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)' }}
+                          title="Switch to Overall"
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
+                        >
+                          <X size={14} />
+                        </div>
+                      )}
                     </div>
                     <input 
                       ref={monthInputRef}
@@ -969,7 +1094,7 @@ export const FeeManagement: React.FC = () => {
                   <th>Month</th>
                   <th>Fees Breakdown</th>
                   <th>Remainings</th>
-                  <th>Total Due</th>
+                  <th>Payable</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -1023,7 +1148,13 @@ export const FeeManagement: React.FC = () => {
                           <button 
                             className="btn-primary" 
                             style={{ padding: '6px 12px', fontSize: '13px' }}
-                            onClick={() => { setPaymentVoucher(v); setPaymentBreakdown({}); setShowPaymentModal(true); }}
+                            onClick={() => handlePay({ 
+                              student_name: v.student_name, 
+                              roll_number: v.roll_number, 
+                              class_name: v.class_name, 
+                              section: v.section, 
+                              pendingVouchers: [v] 
+                            })}
                           >
                             Receive
                           </button>
@@ -1064,9 +1195,45 @@ export const FeeManagement: React.FC = () => {
         const reportsPendingCount = filteredVouchers.filter(v => v.status === 'Pending' || v.status === 'Partial').length;
         const reportsPaidCount = filteredVouchers.filter(v => v.status === 'Paid').length;
 
-        const reportsVouchers = reportsView === 'pending' 
-          ? filteredVouchers.filter(v => v.status === 'Pending' || v.status === 'Partial')
-          : filteredVouchers.filter(v => v.status === 'Paid');
+        // Grouped for reports view
+        const rawGrouped = Object.values(filteredVouchers.reduce((acc: any, v: any) => {
+          const key = v.student_id;
+          if (!acc[key]) {
+            acc[key] = {
+              student_id: v.student_id,
+              roll_number: v.roll_number,
+              student_name: v.student_name,
+              class_name: v.class_name,
+              section: v.section,
+              total_billed: 0,
+              total_received: 0,
+              total_remaining: 0
+            };
+          }
+          acc[key].total_billed += (v.total_amount || 0);
+          acc[key].total_received += (v.paid_amount || 0);
+          acc[key].total_remaining += ((v.total_amount || 0) - (v.paid_amount || 0));
+          return acc;
+        }, {}));
+        
+        let reportsVouchers = rawGrouped.map((g: any) => {
+          return {
+            ...g,
+            status: g.total_remaining === 0 ? 'Paid' : (g.total_received > 0 ? 'Partial' : 'Pending')
+          };
+        });
+        
+        if (reportsView === 'pending') {
+          reportsVouchers = reportsVouchers.filter((v: any) => v.status === 'Pending' || v.status === 'Partial');
+        } else {
+          reportsVouchers = reportsVouchers.filter((v: any) => v.status === 'Paid');
+        }
+        
+        reportsVouchers.sort((a: any, b: any) => {
+          if (a.class_name !== b.class_name) return (a.class_name || '').localeCompare(b.class_name || '');
+          if (a.section !== b.section) return (a.section || '').localeCompare(b.section || '');
+          return (a.student_name || '').localeCompare(b.student_name || '');
+        });
 
         return (
           <div className="reports-section">
@@ -1093,10 +1260,31 @@ export const FeeManagement: React.FC = () => {
                 </select>
                 <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
               </div>
-              <div className="filter-group" style={{ position: 'relative' }}>
-                <div onClick={() => monthInputRef.current?.showPicker()} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', padding: '8px 16px', borderRadius: '4px', color: '#1e40af', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>
-                  <Calendar size={16} />
-                  <span>{monthFilter ? new Date(parseInt(monthFilter.split('-')[0]), parseInt(monthFilter.split('-')[1]) - 1).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'All Months'}</span>
+              <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s' }}>
+                  <div 
+                    onClick={() => monthInputRef.current?.showPicker()}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px', 
+                      padding: '8px 12px',
+                      color: monthFilter ? '#1e40af' : '#475569', fontWeight: 600, fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Calendar size={16} />
+                    <span>{monthFilter ? new Date(parseInt(monthFilter.split('-')[0]), parseInt(monthFilter.split('-')[1]) - 1).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Overall (All Months)'}</span>
+                  </div>
+                  {monthFilter && (
+                    <div 
+                      onClick={(e) => { e.stopPropagation(); setMonthFilter(''); }}
+                      style={{ padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', borderLeft: '1px solid #bfdbfe', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)' }}
+                      title="Switch to Overall"
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
+                    >
+                      <X size={14} />
+                    </div>
+                  )}
                 </div>
                 <input ref={monthInputRef} type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} />
               </div>
@@ -1189,7 +1377,6 @@ export const FeeManagement: React.FC = () => {
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr>
                     <th>Student</th>
-                    <th>Due Date</th>
                     <th>Total Billed</th>
                     <th>Received</th>
                     <th>Status / Remaining</th>
@@ -1197,33 +1384,27 @@ export const FeeManagement: React.FC = () => {
                 </thead>
                 <tbody>
                   {reportsVouchers.length > 0 ? (
-                    reportsVouchers.map((v) => (
-                      <tr key={v.id} style={{ cursor: 'pointer' }} onClick={() => handlePay(v)}>
+                    reportsVouchers.map((v: any) => (
+                      <tr key={v.student_id}>
                         <td>
                           <div style={{ fontWeight: 600, color: 'var(--color-text-heading)', fontSize: '14px' }}>{v.student_name}</div>
                           <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Roll: {v.roll_number || 'N/A'} | {v.class_name} ({v.section})</div>
                         </td>
-                        <td>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: (v.due_date && new Date(v.due_date) < new Date() && v.status !== 'Paid') ? '#DC2626' : 'var(--color-text-secondary)' }}>
-                            {v.due_date ? formatDate(v.due_date) : 'N/A'}
-                          </div>
-                        </td>
-                        <td style={{ fontWeight: 600, fontSize: '14px' }}>₨ {v.total_amount}</td>
-                        <td style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-success)' }}>₨ {v.paid_amount || 0}</td>
+                        <td style={{ fontWeight: 600, fontSize: '14px' }}>₨ {v.total_billed.toLocaleString()}</td>
+                        <td style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-success)' }}>₨ {v.total_received.toLocaleString()}</td>
                         <td>
                           {v.status === 'Paid' ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: '#dcfce7', color: '#15803d', borderRadius: '6px', fontSize: '12px', fontWeight: 600, width: 'fit-content' }}>
                                 <CheckCircle size={14} /> Paid
                               </div>
-                              {v.paid_date && <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>on {formatDate(v.paid_date)}</span>}
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: '#fee2e2', color: '#b91c1c', borderRadius: '6px', fontSize: '12px', fontWeight: 600, width: 'fit-content' }}>
                                 <AlertCircle size={14} /> {v.status}
                               </div>
-                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#b91c1c' }}>Owes: ₨ {v.total_amount - (v.paid_amount || 0)}</span>
+                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#b91c1c' }}>Owes: ₨ {v.total_remaining.toLocaleString()}</span>
                             </div>
                           )}
                         </td>
@@ -1231,8 +1412,8 @@ export const FeeManagement: React.FC = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>
-                        No invoices found for the current filter.
+                      <td colSpan={4} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>
+                        No records found for the current filter.
                       </td>
                     </tr>
                   )}
@@ -1242,61 +1423,154 @@ export const FeeManagement: React.FC = () => {
           </div>
         );
       })()}
+
       
-      {/* Payment Modal */}
-      {showPaymentModal && paymentVoucher && (() => {
-        const remaining = (paymentVoucher.total_amount || 0) - (paymentVoucher.paid_amount || 0);
-        const received = parseFloat(paymentBreakdown.total) || 0;
-        const hasError = received > remaining;
-        const newRemaining = remaining - received;
+      {/* Professional Payment Modal */}
+      {showPaymentModal && paymentStudent && (() => {
+        let hasError = false;
+        let anyReceived = false;
+        let totalPayable = 0;
+        let totalReceived = 0;
         
         return (
-          <div className="modal-overlay" onClick={() => setShowPaymentModal(false)}>
-            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', borderRadius: '16px' }}>
-              <h2 style={{ marginTop: 0, borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
-                Receive Payment
-              </h2>
-              <div style={{ marginBottom: '16px' }}>
-                <p style={{ margin: '0 0 8px', fontWeight: 500 }}>Student: <span style={{ fontWeight: 600 }}>{paymentVoucher.student_name}</span></p>
-                
-                <div style={{ background: 'var(--color-bg-secondary)', padding: '16px', borderRadius: '12px', fontSize: '14px' }}>
-                  <table className="data-table" style={{ margin: 0, background: 'transparent', boxShadow: 'none' }}>
-                    <thead>
+          <div className="modal-overlay" onClick={() => setShowPaymentModal(false)} style={{ backdropFilter: 'blur(4px)', background: 'rgba(15, 23, 42, 0.4)' }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', borderRadius: '20px', padding: '0', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+              
+              {/* Header */}
+              <div style={{ background: 'linear-gradient(to right, #3b82f6, #2563eb)', padding: '24px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <CreditCard size={26} /> Receive Payment
+                  </h2>
+                  <p style={{ margin: '6px 0 0', opacity: 0.9, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <User size={16} /> {paymentStudent.student_name} <span style={{ opacity: 0.6 }}>|</span> Roll: {paymentStudent.roll_number || 'N/A'} <span style={{ opacity: 0.6 }}>|</span> {paymentStudent.class_name} - {paymentStudent.section}
+                  </p>
+                </div>
+                <button onClick={() => setShowPaymentModal(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}>
+                  <X size={20} />
+                </button>
+              </div>
+              
+              {/* Body */}
+              <div style={{ padding: '24px', background: '#f8fafc' }}>
+                <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead style={{ background: '#f1f5f9' }}>
                       <tr>
-                        <th style={{ background: 'transparent', padding: '8px 4px', borderBottom: '1px solid var(--color-border)' }}>Description</th>
-                        <th style={{ background: 'transparent', padding: '8px 4px', textAlign: 'right', borderBottom: '1px solid var(--color-border)' }}>Remaining Balance</th>
-                        <th style={{ background: 'transparent', padding: '8px 4px', textAlign: 'right', borderBottom: '1px solid var(--color-border)' }}>Payment Amount</th>
-                        <th style={{ background: 'transparent', padding: '8px 4px', textAlign: 'right', borderBottom: '1px solid var(--color-border)' }}>New Balance</th>
+                        <th style={{ padding: '14px 20px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Pending Month</th>
+                        <th style={{ padding: '14px 20px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Payable</th>
+                        <th style={{ padding: '14px 20px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'center', width: '180px' }}>Payment Amount</th>
+                        <th style={{ padding: '14px 20px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>New Balance</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border)' }}>Total Fee Payment</td>
-                        <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 500, borderBottom: '1px solid var(--color-border)' }}>₨ {remaining}</td>
-                        <td style={{ padding: '8px 4px', textAlign: 'right', borderBottom: '1px solid var(--color-border)' }}>
-                          <input 
-                            type="number" 
-                            min="0" 
-                            max={remaining}
-                            step="any" 
-                            className="input-field" 
-                            style={{ width: '120px', padding: '6px', textAlign: 'right', borderColor: hasError ? 'red' : undefined }} 
-                            value={paymentBreakdown.total || ''} 
-                            onChange={e => handleBreakdownChange('total', e.target.value)} 
-                          />
-                        </td>
-                        <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 500, color: newRemaining > 0 ? '#DC2626' : 'inherit', borderBottom: '1px solid var(--color-border)' }}>₨ {newRemaining >= 0 ? newRemaining : 0}</td>
-                      </tr>
+                      {paymentStudent.pendingVouchers.map((v: any) => {
+                        const dateObj = new Date(v.billing_month + '-01');
+                        const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                        
+                        const remaining = (v.total_amount || 0) - (v.paid_amount || 0);
+                        const received = parseFloat(paymentBreakdown[v.id]) || 0;
+                        const rowError = received > remaining;
+                        const newRemaining = remaining - received;
+                        
+                        if (rowError) hasError = true;
+                        if (received > 0) anyReceived = true;
+                        
+                        totalPayable += remaining;
+                        totalReceived += received;
+                        
+                        return (
+                          <tr key={v.id} style={{ borderBottom: '1px solid #f1f5f9', background: received > 0 ? '#eff6ff' : 'transparent', transition: 'background 0.2s' }}>
+                            <td style={{ padding: '14px 20px', fontSize: '14px', color: '#1e293b', fontWeight: 600 }}>{monthYear}</td>
+                            <td style={{ padding: '14px 20px', textAlign: 'right', fontWeight: 600, color: '#475569' }}>₨ {remaining.toLocaleString()}</td>
+                            <td style={{ padding: '10px 20px', textAlign: 'center' }}>
+                              <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '13px', pointerEvents: 'none' }}>₨</span>
+                                <input 
+                                  type="number" 
+                                  min="0" 
+                                  max={remaining}
+                                  step="any" 
+                                  placeholder="0"
+                                  className="form-input"
+                                  style={{ 
+                                    padding: '8px 12px 8px 30px', 
+                                    textAlign: 'right', 
+                                    borderColor: rowError ? '#ef4444' : (received > 0 ? '#3b82f6' : '#cbd5e1'),
+                                    boxShadow: rowError ? '0 0 0 1px #ef4444' : (received > 0 ? '0 0 0 1px #3b82f6' : 'none'),
+                                    borderRadius: '8px',
+                                    fontWeight: received > 0 ? 600 : 400,
+                                    color: received > 0 ? '#1d4ed8' : '#334155',
+                                    backgroundColor: 'white',
+                                    width: '100%'
+                                  }} 
+                                  value={paymentBreakdown[v.id] !== undefined ? paymentBreakdown[v.id] : ''} 
+                                  onChange={e => handleBreakdownChange(v.id, e.target.value)} 
+                                />
+                              </div>
+                            </td>
+                            <td style={{ padding: '14px 20px', textAlign: 'right', fontWeight: 700, color: newRemaining > 0 ? '#ef4444' : '#10b981' }}>
+                              {newRemaining === 0 && received > 0 ? (
+                                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}><CheckCircle size={16} /> Cleared</span>
+                              ) : (
+                                `₨ ${newRemaining >= 0 ? newRemaining.toLocaleString() : 0}`
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
+                    <tfoot style={{ background: '#f8fafc' }}>
+                      <tr>
+                        <td style={{ padding: '16px 20px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #e2e8f0' }}>Total Summary</td>
+                        <td style={{ padding: '16px 20px', fontSize: '16px', color: '#475569', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #e2e8f0' }}>₨ {totalPayable.toLocaleString()}</td>
+                        <td style={{ padding: '16px 20px', fontSize: '16px', color: '#2563eb', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #e2e8f0' }}>₨ {totalReceived.toLocaleString()}</td>
+                        <td style={{ padding: '16px 20px', fontSize: '16px', color: (totalPayable - totalReceived) > 0 ? '#ef4444' : '#10b981', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #e2e8f0' }}>₨ {(totalPayable - totalReceived).toLocaleString()}</td>
+                      </tr>
+                    </tfoot>
                   </table>
-                  {hasError && <p style={{ color: 'red', marginTop: '12px', fontSize: '13px' }}>Error: Payment amount cannot exceed the remaining balance.</p>}
                 </div>
+                
+                {hasError && (
+                  <div style={{ marginTop: '16px', padding: '12px 16px', background: '#fef2f2', borderLeft: '4px solid #ef4444', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '12px', color: '#b91c1c' }}>
+                    <AlertCircle size={20} />
+                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Error: One or more payment amounts exceed the remaining balance.</span>
+                  </div>
+                )}
               </div>
               
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-                <button className="btn-secondary" onClick={() => setShowPaymentModal(false)}>Cancel</button>
-                <button className="btn-primary" onClick={submitPayment} disabled={!!isPaying || hasError || received <= 0}>
-                  {isPaying ? 'Processing...' : 'Submit Payment'}
+              {/* Footer */}
+              <div style={{ padding: '20px 24px', background: 'white', display: 'flex', gap: '16px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
+                <button 
+                  onClick={() => setShowPaymentModal(false)}
+                  style={{ padding: '10px 24px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', transition: 'background 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={submitPayment} 
+                  disabled={!!isPaying || hasError || !anyReceived}
+                  style={{ 
+                    padding: '10px 28px', 
+                    background: (!!isPaying || hasError || !anyReceived) ? '#93c5fd' : '#2563eb', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    fontWeight: 600, 
+                    fontSize: '14px', 
+                    cursor: (!!isPaying || hasError || !anyReceived) ? 'not-allowed' : 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    transition: 'background 0.2s',
+                    boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
+                  }}
+                  onMouseEnter={e => { if (!isPaying && !hasError && anyReceived) e.currentTarget.style.background = '#1d4ed8'; }}
+                  onMouseLeave={e => { if (!isPaying && !hasError && anyReceived) e.currentTarget.style.background = '#2563eb'; }}
+                >
+                  {isPaying ? 'Processing...' : 'Confirm Payment'}
                 </button>
               </div>
             </div>
@@ -1503,6 +1777,116 @@ export const FeeManagement: React.FC = () => {
         </div>
       )}
 
+
+      {/* Remainings Details Modal */}
+      {showRemainingsModal && selectedStudentForRemainings && (
+        <div className="modal-overlay" onClick={() => setShowRemainingsModal(false)} style={{ backdropFilter: 'blur(4px)', background: 'rgba(15, 23, 42, 0.4)' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px', borderRadius: '20px', padding: '0', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <div style={{ background: 'linear-gradient(to right, #ef4444, #dc2626)', padding: '20px 24px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertCircle size={24} /> Pending Dues
+                </h2>
+                <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '14px' }}>{selectedStudentForRemainings.student_name} • Roll: {selectedStudentForRemainings.roll_number || 'N/A'}</p>
+              </div>
+              <button onClick={() => setShowRemainingsModal(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}>
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div style={{ padding: '24px', background: '#f8fafc' }}>
+              <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ background: '#f1f5f9' }}>
+                    <tr>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Pending Month</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Remaining Dues</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedStudentForRemainings.pendingVouchers.map((v: any) => {
+                      const dateObj = new Date(v.billing_month + '-01');
+                      const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                      const remaining = (v.total_amount || 0) - (v.paid_amount || 0);
+                      return (
+                        <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#dc2626', fontWeight: 600, textAlign: 'right' }}>₨ {remaining.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot style={{ background: '#fdf2f2' }}>
+                    <tr>
+                      <td style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #fecaca' }}>Total Pending</td>
+                      <td style={{ padding: '16px', fontSize: '16px', color: '#b91c1c', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #fecaca' }}>
+                        ₨ {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + (pv.total_amount - (pv.paid_amount || 0)), 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Paid History Modal */}
+      {showPaidModal && selectedStudentForPaid && (
+        <div className="modal-overlay" onClick={() => setShowPaidModal(false)} style={{ backdropFilter: 'blur(4px)', background: 'rgba(15, 23, 42, 0.4)' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', borderRadius: '20px', padding: '0', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <div style={{ background: 'linear-gradient(to right, #16a34a, #15803d)', padding: '20px 24px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle size={24} /> Payment History
+                </h2>
+                <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '14px' }}>{selectedStudentForPaid.student_name} • Roll: {selectedStudentForPaid.roll_number || 'N/A'}</p>
+              </div>
+              <button onClick={() => setShowPaidModal(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}>
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div style={{ padding: '24px', background: '#f8fafc' }}>
+              <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ background: '#f1f5f9' }}>
+                    <tr>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Billing Month</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Payment Date</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Amount Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedStudentForPaid.paidVouchers.map((v: any) => {
+                      const dateObj = new Date(v.billing_month + '-01');
+                      const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                      const paidDateObj = v.paid_date ? new Date(v.paid_date) : null;
+                      const paidDateStr = paidDateObj ? paidDateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+                      
+                      return (
+                        <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#64748b' }}>{paidDateStr}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#16a34a', fontWeight: 600, textAlign: 'right' }}>₨ {(v.paid_amount || 0).toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot style={{ background: '#f0fdf4' }}>
+                    <tr>
+                      <td colSpan={2} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #bbf7d0' }}>Total Paid</td>
+                      <td style={{ padding: '16px', fontSize: '16px', color: '#15803d', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bbf7d0' }}>
+                        ₨ {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + (pv.paid_amount || 0), 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

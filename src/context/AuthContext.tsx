@@ -201,8 +201,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
+  const value = React.useMemo(
+    () => ({ user, session, loading, logout, isAuthenticated: !!user }),
+    [user, session, loading]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );

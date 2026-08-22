@@ -492,3 +492,69 @@ input[type="file"]::file-selector-button:hover {
 .large-action-pill.active-p { background: var(--color-success); border-color: var(--color-success); color: white; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
 .large-action-pill.active-a { background: var(--color-danger); border-color: var(--color-danger); color: white; box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
 .large-action-pill.active-l { background: var(--color-warning); border-color: var(--color-warning); color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
+
+
+/* ==========================================================================
+   MOBILE RESPONSIVENESS OVERRIDES
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Tables */
+  .table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-sm);
+  }
+  
+  .data-table {
+    min-width: 800px; /* Ensure tables don't squish too much on mobile */
+  }
+
+  /* Layout wrappers */
+  .main-content-wrapper {
+    width: 100vw;
+  }
+  .page-content {
+    padding: var(--space-2);
+  }
+
+  /* Form & Controls stacking */
+  .form-row, .records-controls > div, .action-row, .filter-group {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100%;
+    gap: var(--space-2) !important;
+  }
+
+  .records-controls {
+    flex-direction: column;
+  }
+
+  .form-group, .search-box {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Horizontal scrolling for tabs */
+  .profile-tabs-container, .profile-nav-horizontal {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    width: 100%;
+    scrollbar-width: none; /* Firefox */
+  }
+  .profile-tabs-container::-webkit-scrollbar, .profile-nav-horizontal::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+  }
+  .profile-tab-horizontal {
+    flex-shrink: 0;
+  }
+
+  /* Modals */
+  .modal-content {
+    width: 95% !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    padding: var(--space-3) !important;
+  }
+}

@@ -8,6 +8,8 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode, allowedRoles?
   const { isAuthenticated, user, loading } = useAuth();
   const router = useRouter();
 
+  const rolesString = allowedRoles ? allowedRoles.join(',') : '';
+
   useEffect(() => {
     if (loading) return;
 
@@ -24,7 +26,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode, allowedRoles?
         router.replace('/login');
       }
     }
-  }, [isAuthenticated, user, loading, allowedRoles, router]);
+  }, [isAuthenticated, user?.role, loading, rolesString, router]);
 
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#F8FAFC' }}>Loading...</div>;

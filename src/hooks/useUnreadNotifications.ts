@@ -109,7 +109,7 @@ export function useUnreadNotifications() {
         navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
       }
     };
-  }, [user]);
+  }, [user?.id, user?.role]);
 
   const markAllAsRead = async () => {
     if (!user) return;
