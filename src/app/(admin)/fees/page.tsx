@@ -1113,8 +1113,8 @@ export const FeeManagement: React.FC = () => {
                   <th>Roll No</th>
                   <th>Student</th>
                   <th>Remainings</th>
-                  <th>Payable</th>
                   <th>Paid</th>
+                  <th>Payable</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1136,26 +1136,26 @@ export const FeeManagement: React.FC = () => {
                       </td>
                       <td>
                         <div 
-                          style={{ color: totalRemaining > 0 ? '#DC2626' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s' }}
+                          style={{ color: totalRemaining > 0 ? '#DC2626' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '6px 12px', borderRadius: '6px', background: totalRemaining > 0 ? '#fee2e2' : '#f1f5f9', border: totalRemaining > 0 ? '1px solid #fca5a5' : '1px solid #e2e8f0', transition: 'all 0.2s', textAlign: 'center', minWidth: '80px' }}
                           onClick={() => { if (totalRemaining > 0) { setSelectedStudentForRemainings(student); setShowRemainingsModal(true); } }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.95)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
                         >
                           {totalRemaining.toLocaleString()}
                         </div>
                       </td>
-                      <td className="font-semibold" style={{ color: 'var(--color-text-heading)' }}>
-                        {totalPayable.toLocaleString()}
-                      </td>
                       <td>
                         <div 
-                          style={{ color: totalPaid > 0 ? '#16A34A' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s' }}
+                          style={{ color: totalPaid > 0 ? '#16A34A' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '6px 12px', borderRadius: '6px', background: totalPaid > 0 ? '#dcfce7' : '#f1f5f9', border: totalPaid > 0 ? '1px solid #86efac' : '1px solid #e2e8f0', transition: 'all 0.2s', textAlign: 'center', minWidth: '80px' }}
                           onClick={() => { if (totalPaid > 0) { setSelectedStudentForPaid(student); setShowPaidModal(true); } }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#f0fdf4'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.95)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
                         >
                           {totalPaid.toLocaleString()}
                         </div>
+                      </td>
+                      <td className="font-semibold" style={{ color: 'var(--color-text-heading)' }}>
+                        {totalPayable.toLocaleString()}
                       </td>
                       <td>
                         {totalRemaining > 0 ? (
@@ -1195,48 +1195,12 @@ export const FeeManagement: React.FC = () => {
         const reportsTotalPending = Math.max(0, reportsTotalExpected - reportsTotalCollected);
         const reportsCollectionRate = reportsTotalExpected > 0 ? ((reportsTotalCollected / reportsTotalExpected) * 100).toFixed(1) : '0.0';
         
-        const reportsPendingCount = filteredVouchers.filter(v => v.status === 'Pending' || v.status === 'Partial').length;
-        const reportsPaidCount = filteredVouchers.filter(v => v.status === 'Paid').length;
+        const reportsPendingCount = groupedStudents.filter((s: any) => s.pendingVouchers.some((v: any) => (v.total_amount - (v.paid_amount || 0)) > 0)).length;
+        const reportsPaidCount = groupedStudents.filter((s: any) => s.paidVouchers.length > 0).length;
 
-        // Grouped for reports view
-        const rawGrouped = Object.values(filteredVouchers.reduce((acc: any, v: any) => {
-          const key = v.student_id;
-          if (!acc[key]) {
-            acc[key] = {
-              student_id: v.student_id,
-              roll_number: v.roll_number,
-              student_name: v.student_name,
-              class_name: v.class_name,
-              section: v.section,
-              total_billed: 0,
-              total_received: 0,
-              total_remaining: 0
-            };
-          }
-          acc[key].total_billed += (v.total_amount || 0);
-          acc[key].total_received += (v.paid_amount || 0);
-          acc[key].total_remaining += ((v.total_amount || 0) - (v.paid_amount || 0));
-          return acc;
-        }, {}));
-        
-        let reportsVouchers = rawGrouped.map((g: any) => {
-          return {
-            ...g,
-            status: g.total_remaining === 0 ? 'Paid' : (g.total_received > 0 ? 'Partial' : 'Pending')
-          };
-        });
-        
-        if (reportsView === 'pending') {
-          reportsVouchers = reportsVouchers.filter((v: any) => v.status === 'Pending' || v.status === 'Partial');
-        } else {
-          reportsVouchers = reportsVouchers.filter((v: any) => v.status === 'Paid');
-        }
-        
-        reportsVouchers.sort((a: any, b: any) => {
-          if (a.class_name !== b.class_name) return (a.class_name || '').localeCompare(b.class_name || '');
-          if (a.section !== b.section) return (a.section || '').localeCompare(b.section || '');
-          return (a.student_name || '').localeCompare(b.student_name || '');
-        });
+        let reportsVouchers = reportsView === 'pending'
+          ? groupedStudents.filter((s: any) => s.pendingVouchers.some((v: any) => (v.total_amount - (v.paid_amount || 0)) > 0))
+          : groupedStudents.filter((s: any) => s.paidVouchers.length > 0);
 
         return (
           <div className="reports-section">
@@ -1380,42 +1344,56 @@ export const FeeManagement: React.FC = () => {
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr>
                     <th>Student</th>
-                    <th>Total Billed</th>
-                    <th>Received</th>
-                    <th>Status / Remaining</th>
+                    <th>Payable</th>
+                    {reportsView === 'pending' ? (
+                      <th>Remainings</th>
+                    ) : (
+                      <th>Paid</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {reportsVouchers.length > 0 ? (
-                    reportsVouchers.map((v: any) => (
-                      <tr key={v.student_id}>
+                    reportsVouchers.map((student: any) => {
+                      const totalRemaining = student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.total_amount - (v.paid_amount || 0)), 0);
+                      const totalPayable = student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0) + student.paidVouchers.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0);
+                      const totalPaid = student.paidVouchers.reduce((sum: number, v: any) => sum + (v.paid_amount || 0), 0) + student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.paid_amount || 0), 0);
+                      
+                      return (
+                      <tr key={student.student_id}>
                         <td>
-                          <div style={{ fontWeight: 600, color: 'var(--color-text-heading)', fontSize: '14px' }}>{v.student_name}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Roll: {v.roll_number || 'N/A'} | {v.class_name} ({v.section})</div>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text-heading)', fontSize: '14px' }}>{student.student_name}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Roll: {student.roll_number || 'N/A'} | {student.class_name} ({student.section})</div>
                         </td>
-                        <td style={{ fontWeight: 600, fontSize: '14px' }}>₨ {v.total_billed.toLocaleString()}</td>
-                        <td style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-success)' }}>₨ {v.total_received.toLocaleString()}</td>
-                        <td>
-                          {v.status === 'Paid' ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: '#dcfce7', color: '#15803d', borderRadius: '6px', fontSize: '12px', fontWeight: 600, width: 'fit-content' }}>
-                                <CheckCircle size={14} /> Paid
-                              </div>
+                        <td style={{ fontWeight: 600, fontSize: '14px' }}>{totalPayable.toLocaleString()}</td>
+                        {reportsView === 'pending' ? (
+                          <td>
+                            <div 
+                              style={{ color: totalRemaining > 0 ? '#DC2626' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '6px 12px', borderRadius: '6px', background: totalRemaining > 0 ? '#fee2e2' : '#f1f5f9', border: totalRemaining > 0 ? '1px solid #fca5a5' : '1px solid #e2e8f0', transition: 'all 0.2s', textAlign: 'center', minWidth: '80px' }}
+                              onClick={() => { if (totalRemaining > 0) { setSelectedStudentForRemainings(student); setShowRemainingsModal(true); } }}
+                              onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.95)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
+                            >
+                              {totalRemaining.toLocaleString()}
                             </div>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: '#fee2e2', color: '#b91c1c', borderRadius: '6px', fontSize: '12px', fontWeight: 600, width: 'fit-content' }}>
-                                <AlertCircle size={14} /> {v.status}
-                              </div>
-                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#b91c1c' }}>Owes: ₨ {v.total_remaining.toLocaleString()}</span>
+                          </td>
+                        ) : (
+                          <td>
+                            <div 
+                              style={{ color: totalPaid > 0 ? '#16A34A' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '6px 12px', borderRadius: '6px', background: totalPaid > 0 ? '#dcfce7' : '#f1f5f9', border: totalPaid > 0 ? '1px solid #86efac' : '1px solid #e2e8f0', transition: 'all 0.2s', textAlign: 'center', minWidth: '80px' }}
+                              onClick={() => { if (totalPaid > 0) { setSelectedStudentForPaid(student); setShowPaidModal(true); } }}
+                              onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.95)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
+                            >
+                              {totalPaid.toLocaleString()}
                             </div>
-                          )}
-                        </td>
+                          </td>
+                        )}
                       </tr>
-                    ))
+                    )})
                   ) : (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>
+                      <td colSpan={3} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>
                         No records found for the current filter.
                       </td>
                     </tr>
@@ -1803,6 +1781,7 @@ export const FeeManagement: React.FC = () => {
                   <thead style={{ background: '#f1f5f9' }}>
                     <tr>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Pending Month</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Paid Dues</th>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Remaining Dues</th>
                     </tr>
                   </thead>
@@ -1810,20 +1789,25 @@ export const FeeManagement: React.FC = () => {
                     {selectedStudentForRemainings.pendingVouchers.map((v: any) => {
                       const dateObj = new Date(v.billing_month + '-01');
                       const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                      const remaining = (v.total_amount || 0) - (v.paid_amount || 0);
+                      const paidAmount = v.paid_amount || 0;
+                      const remaining = (v.total_amount || 0) - paidAmount;
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#dc2626', fontWeight: 600, textAlign: 'right' }}>₨ {remaining.toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#16a34a', fontWeight: 600, textAlign: 'right' }}>{paidAmount.toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#dc2626', fontWeight: 600, textAlign: 'right' }}>{remaining.toLocaleString()}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot style={{ background: '#fdf2f2' }}>
                     <tr>
-                      <td style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #fecaca' }}>Total Pending</td>
+                      <td style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #fecaca' }}>Total</td>
+                      <td style={{ padding: '16px', fontSize: '16px', color: '#15803d', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #fecaca' }}>
+                        {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + (pv.paid_amount || 0), 0).toLocaleString()}
+                      </td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#b91c1c', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #fecaca' }}>
-                        ₨ {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + (pv.total_amount - (pv.paid_amount || 0)), 0).toLocaleString()}
+                        {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + (pv.total_amount - (pv.paid_amount || 0)), 0).toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>
@@ -1858,6 +1842,7 @@ export const FeeManagement: React.FC = () => {
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Billing Month</th>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Payment Date</th>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Amount Paid</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Remaining Dues</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1866,21 +1851,26 @@ export const FeeManagement: React.FC = () => {
                       const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                       const paidDateObj = v.paid_date ? new Date(v.paid_date) : null;
                       const paidDateStr = paidDateObj ? paidDateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+                      const remaining = (v.total_amount || 0) - (v.paid_amount || 0);
                       
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#64748b' }}>{paidDateStr}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#16a34a', fontWeight: 600, textAlign: 'right' }}>₨ {(v.paid_amount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#16a34a', fontWeight: 600, textAlign: 'right' }}>{(v.paid_amount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#dc2626', fontWeight: 600, textAlign: 'right' }}>{remaining.toLocaleString()}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot style={{ background: '#f0fdf4' }}>
                     <tr>
-                      <td colSpan={2} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #bbf7d0' }}>Total Paid</td>
+                      <td colSpan={2} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #bbf7d0' }}>Total</td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#15803d', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bbf7d0' }}>
-                        ₨ {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + (pv.paid_amount || 0), 0).toLocaleString()}
+                        {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + (pv.paid_amount || 0), 0).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '16px', fontSize: '16px', color: '#b91c1c', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bbf7d0' }}>
+                        {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + (pv.total_amount - (pv.paid_amount || 0)), 0).toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>
