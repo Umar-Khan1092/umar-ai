@@ -608,6 +608,28 @@ export const FeeManagement: React.FC = () => {
     return result;
   }, [vouchers, searchQuery, monthFilter, selectedClassGroup, classFilter, sectionFilter]);
 
+  const groupedStudents = useMemo(() => {
+    return Object.values(filteredVouchers.reduce((acc: any, v: any) => {
+      if (!acc[v.student_id]) {
+        acc[v.student_id] = {
+          student_id: v.student_id,
+          student_name: v.student_name,
+          roll_number: v.roll_number,
+          class_name: v.class_name,
+          section: v.section,
+          pendingVouchers: [],
+          paidVouchers: [],
+        };
+      }
+      if (v.status === 'Paid') {
+        acc[v.student_id].paidVouchers.push(v);
+      } else {
+        acc[v.student_id].pendingVouchers.push(v);
+      }
+      return acc;
+    }, {})).sort((a: any, b: any) => (a.student_name || '').localeCompare(b.student_name || ''));
+  }, [filteredVouchers]);
+
   const availableClasses = useMemo(() => Array.from(new Set(
     vouchers.map(v => v.class_name).filter(Boolean)
   )).sort(), [vouchers]);
@@ -1088,95 +1110,76 @@ export const FeeManagement: React.FC = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Voucher ID</th>
+                  <th>Roll No</th>
                   <th>Student</th>
-                  <th>Month</th>
-                  <th>Fees Breakdown</th>
                   <th>Remainings</th>
                   <th>Payable</th>
-                  <th>Status</th>
+                  <th>Paid</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredVouchers.length > 0 ? (
-                  filteredVouchers.map((v: any, idx: number) => (
-                    <tr key={v.id}>
-                      <td>{idx + 1}</td>
-                      <td><span className="badge">V-{v.id.substring(0, 6)}</span></td>
+                {groupedStudents.length > 0 ? (
+                  groupedStudents.map((student: any) => {
+                    const totalRemaining = student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.total_amount - (v.paid_amount || 0)), 0);
+                    const totalPayable = student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0) + student.paidVouchers.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0);
+                    const totalPaid = student.paidVouchers.reduce((sum: number, v: any) => sum + (v.paid_amount || 0), 0) + student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.paid_amount || 0), 0);
+                    
+                    return (
+                    <tr key={student.student_id}>
+                      <td>{student.roll_number || 'N/A'}</td>
                       <td>
                         <div className="student-info">
-                          <span className="font-semibold">{v.student_name}</span>
-                          <span className="text-sm text-gray-500">Roll: {v.roll_number || 'N/A'} • {v.class_name} {v.section}</span>
+                          <span className="font-semibold">{student.student_name}</span>
+                          <span className="text-sm text-gray-500">{student.class_name} {student.section}</span>
                         </div>
                       </td>
-                      <td>{v.billing_month}</td>
-                      <td style={{ fontSize: '13px' }}>
-                        <div>Tuition: ₨{v.tuition_fee}</div>
-                        {v.transport_fee > 0 && <div>Transport: ₨{v.transport_fee}</div>}
-                        {v.academy_fee > 0 && <div>Academy: ₨{v.academy_fee}</div>}
-                        {v.custom_fee_amount > 0 && <div>{v.custom_fee_title || 'Other'}: ₨{v.custom_fee_amount}</div>}
-                      </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ color: v.arrears > 0 ? '#DC2626' : 'var(--color-text-secondary)' }}>
-                            ₨{v.arrears}
-                          </span>
-                          {v.arrears > 0 && (
-                            <button 
-                              className="btn-icon" 
-                              onClick={() => handleRemainingsClick(v)}
-                              title="View History"
-                              style={{ padding: '4px', height: 'auto', minWidth: 'auto', background: '#eff6ff', color: '#2563EB', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                            >
-                              Details
-                            </button>
-                          )}
+                        <div 
+                          style={{ color: totalRemaining > 0 ? '#DC2626' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s' }}
+                          onClick={() => { if (totalRemaining > 0) { setSelectedStudentForRemainings(student); setShowRemainingsModal(true); } }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {totalRemaining.toLocaleString()}
                         </div>
                       </td>
                       <td className="font-semibold" style={{ color: 'var(--color-text-heading)' }}>
-                        ₨{(v.total_amount || 0).toLocaleString()}
+                        {totalPayable.toLocaleString()}
                       </td>
                       <td>
-                        <span className={`status-badge ${v.status.toLowerCase()}`}>
-                          {v.status}
-                        </span>
+                        <div 
+                          style={{ color: totalPaid > 0 ? '#16A34A' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s' }}
+                          onClick={() => { if (totalPaid > 0) { setSelectedStudentForPaid(student); setShowPaidModal(true); } }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f0fdf4'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {totalPaid.toLocaleString()}
+                        </div>
                       </td>
                       <td>
-                        {v.status !== 'Paid' ? (
+                        {totalRemaining > 0 ? (
                           <button 
                             className="btn-primary" 
                             style={{ padding: '6px 12px', fontSize: '13px' }}
-                            onClick={() => handlePay({ 
-                              student_name: v.student_name, 
-                              roll_number: v.roll_number, 
-                              class_name: v.class_name, 
-                              section: v.section, 
-                              pendingVouchers: [v] 
-                            })}
+                            onClick={() => handlePay(student)}
                           >
-                            Receive
+                            Pay Now
                           </button>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', fontSize: '12px', gap: '4px' }}>
                             <span style={{ color: 'var(--color-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <CheckCircle size={14} /> Received
+                              <CheckCircle size={14} /> Cleared
                             </span>
-                            {v.paid_date && (
-                              <span style={{ color: 'var(--color-text-muted)' }}>
-                                on {formatDate(v.paid_date)}
-                              </span>
-                            )}
                           </div>
                         )}
                       </td>
                     </tr>
-                  ))
+                  )})
                 ) : (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>
-                      No invoices found.
+                    <td colSpan={6} className="empty-state" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>
+                      No fee records found.
                     </td>
                   </tr>
                 )}
