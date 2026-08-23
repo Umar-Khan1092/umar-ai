@@ -144,7 +144,7 @@ export const StaffRegistration: React.FC = () => {
         <h2 style={{ fontSize: '18px', color: schoolInfo.logo ? '#e2e8f0' : '#64748b', marginTop: '4px', fontWeight: '500' }}>Staff Registration Form</h2>
       </div>
 
-      <div style={{ position: 'relative', zIndex: 1, backgroundColor: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' }}>
+      <div className="registration-inner" style={{ position: 'relative', zIndex: 1, backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' }}>
 
       {status.type && (
         <div className={`toast ${status.type}`}>

@@ -9,6 +9,10 @@
   padding: var(--space-4);
 }
 
+.registration-inner {
+  padding: 24px;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -75,6 +79,20 @@
 /* Make full width on smaller screens */
 @media (max-width: 768px) {
   .form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .registration-page {
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  .registration-inner {
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border-left: none;
+    border-right: none;
+  }
+  .form-card {
+    padding: 16px 12px !important;
   }
 }

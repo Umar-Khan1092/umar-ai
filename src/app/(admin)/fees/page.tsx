@@ -1039,8 +1039,8 @@ export const FeeManagement: React.FC = () => {
 
       {activeTab === 'receive' && (
         <div className="receive-section">
-          <div className="records-controls" style={{ padding: '12px 0', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
+          <div className="records-controls" style={{ padding: '12px 0', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <div className="search-box">
                 <Search size={18} className="search-icon" />
                 <div className="search-divider"></div>
@@ -1080,10 +1080,13 @@ export const FeeManagement: React.FC = () => {
                       <option value="">All Sections</option>
                       {availableSections.map((s: any) => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
                   </div>
-
-                  <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                </>
+              )}
+            </div>
+            {!selectedClassGroup && (
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s' }}>
                       <div 
                         onClick={() => monthInputRef.current?.showPicker()}
@@ -1119,10 +1122,9 @@ export const FeeManagement: React.FC = () => {
                         opacity: 0, overflow: 'hidden', pointerEvents: 'none'
                       }}
                     />
-                  </div>
-                </>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="table-container">
@@ -1228,25 +1230,28 @@ export const FeeManagement: React.FC = () => {
               <p className="body-text">At-a-glance financial summary and invoice tracking for the selected period.</p>
             </div>
 
-            <div className="records-controls" style={{ padding: '12px 16px', marginBottom: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap', backgroundColor: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', alignItems: 'center' }}>
-              <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-secondary)', marginRight: 'auto' }}>Filters:</div>
-              <div className="filter-group">
-                <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px' }} />
-                <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px' }}>
-                  <option value="">All Classes</option>
-                  {availableClasses.map((c: any) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
+            <div className="records-controls" style={{ padding: '12px 16px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-secondary)', minWidth: '50px' }}>Filters:</div>
+                <div className="filter-group" style={{ flex: '1 1 min-content' }}>
+                  <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px' }} />
+                  <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px' }}>
+                    <option value="">All Classes</option>
+                    {availableClasses.map((c: any) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
+                </div>
+                <div className="filter-group" style={{ flex: '1 1 min-content' }}>
+                  <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px' }} />
+                  <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px' }}>
+                    <option value="">All Sections</option>
+                    {availableSections.map((s: any) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
+                </div>
               </div>
-              <div className="filter-group">
-                <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px' }} />
-                <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px' }}>
-                  <option value="">All Sections</option>
-                  {availableSections.map((s: any) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
-              </div>
-              <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s' }}>
                   <div 
                     onClick={() => monthInputRef.current?.showPicker()}
@@ -1273,6 +1278,7 @@ export const FeeManagement: React.FC = () => {
                   )}
                 </div>
                 <input ref={monthInputRef} type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} />
+              </div>
               </div>
             </div>
 
@@ -1810,6 +1816,10 @@ export const FeeManagement: React.FC = () => {
                   <thead style={{ background: '#f1f5f9' }}>
                     <tr>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Pending Month</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Tuition</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Transport</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Academy</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Custom</th>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Remaining Dues</th>
                     </tr>
                   </thead>
@@ -1819,9 +1829,18 @@ export const FeeManagement: React.FC = () => {
                       const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                       const paidAmount = parseFloat(v.paid_amount) || 0;
                       const remaining = (parseFloat(v.total_amount) || 0) - paidAmount;
+                      
+                      // Calculate proportional remaining for each breakdown if partially paid
+                      // For simplicity in display, we just show the base fees if it's completely unpaid, 
+                      // or if it's partially paid, we could just show the raw base fee amounts to show what makes up the bill.
+                      // Since they want breakdown, we'll show the base amounts.
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.tuition_fee) || 0).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.transport_fee) || 0).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.academy_fee) || 0).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.custom_fee_amount) || 0).toLocaleString()}</td>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#dc2626', fontWeight: 600, textAlign: 'right' }}>{remaining.toLocaleString()}</td>
                         </tr>
                       );
@@ -1829,7 +1848,7 @@ export const FeeManagement: React.FC = () => {
                   </tbody>
                   <tfoot style={{ background: '#fdf2f2' }}>
                     <tr>
-                      <td style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #fecaca' }}>Total</td>
+                      <td colSpan={5} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #fecaca' }}>Total Pending</td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#b91c1c', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #fecaca' }}>
                         {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + ((parseFloat(pv.total_amount) || 0) - (parseFloat(pv.paid_amount) || 0)), 0).toLocaleString()}
                       </td>

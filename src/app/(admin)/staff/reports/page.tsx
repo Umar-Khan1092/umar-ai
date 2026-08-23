@@ -156,15 +156,16 @@ export const StaffReports: React.FC = () => {
         </div>
       </div>
 
-      <div className="records-controls" style={{ marginBottom: '24px', background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
-        <div className="filters" style={{ width: '100%', gap: '16px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+      <div className="records-controls" style={{ marginBottom: '24px', background: 'white', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', flexDirection: 'row' }}>
+        <div className="filters" style={{ width: '100%', gap: '12px', flexWrap: 'nowrap', display: 'flex' }}>
           
-          <div className="filter-group">
-            <Filter size={16} className="filter-icon" style={{ marginRight: '8px', color: '#64748b' }} />
+          <div className="filter-group" style={{ flex: '1 1 0%', minWidth: 0 }}>
+            <Filter size={16} className="filter-icon" style={{ marginRight: '8px', color: '#64748b', flexShrink: 0 }} />
             <select 
               value={roleFilter} 
               onChange={(e) => setRoleFilter(e.target.value)}
               className="filter-select"
+              style={{ width: '100%' }}
             >
               <option value="">All Roles</option>
               <option value="Teacher">Teacher</option>
@@ -179,14 +180,14 @@ export const StaffReports: React.FC = () => {
             </select>
           </div>
 
-          <div className="filter-group">
-            <Calendar size={16} className="filter-icon" style={{ marginRight: '8px', color: '#64748b' }} />
+          <div className="filter-group" style={{ flex: '1 1 0%', minWidth: 0 }}>
+            <Calendar size={16} className="filter-icon" style={{ marginRight: '8px', color: '#64748b', flexShrink: 0 }} />
             <input 
               type="month"
               value={monthFilter} 
               onChange={(e) => setMonthFilter(e.target.value)}
               className="filter-select"
-              style={{ border: 'none', background: 'transparent', outline: 'none' }}
+              style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', paddingRight: '0' }}
             />
           </div>
           

@@ -554,9 +554,12 @@ input[type="file"]::file-selector-button:hover {
   /* Tables */
   .table-container {
     width: 100%;
+    margin: 0;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
     scrollbar-width: none;
     position: relative;
   }
@@ -573,17 +576,45 @@ input[type="file"]::file-selector-button:hover {
   }
 
   /* Layout wrappers */
-  .main-content-wrapper {
+  .main-content-wrapper, .staff-layout, .student-layout, .teacher-layout, .guardian-layout, .admin-layout {
     width: 100vw;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
-  .page-content {
-    padding: var(--space-2);
+  .page-content, .staff-content, .student-content, .teacher-content {
+    padding: 0 !important;
     overflow-x: hidden;
     width: 100%;
   }
+  
+  /* Edge-to-edge UI for Main Cards on Mobile */
+  .card, .premium-card, .profile-content, .class-card {
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .page-content > .card, .page-content > .premium-card {
+    padding: 16px 12px !important;
+  }
+  
+  /* Remove excessive margins */
+  .page-header {
+    padding: 16px 12px 0 12px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .filters-bar {
+    padding: 12px !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    margin-bottom: 16px !important;
+  }
 
   /* Professional Horizontal Scrolling for Filters & Controls */
-  .form-row, .records-controls > div, .action-row, .filter-group, .horizontal-scroll-mobile {
+  .form-row, .records-controls > div, .action-row, .horizontal-scroll-mobile, .filters-bar {
     flex-direction: row !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
@@ -595,10 +626,10 @@ input[type="file"]::file-selector-button:hover {
     gap: var(--space-2) !important;
     padding-bottom: 2px;
   }
-  .form-row::-webkit-scrollbar, .records-controls > div::-webkit-scrollbar, .action-row::-webkit-scrollbar, .filter-group::-webkit-scrollbar, .horizontal-scroll-mobile::-webkit-scrollbar {
+  .form-row::-webkit-scrollbar, .records-controls > div::-webkit-scrollbar, .action-row::-webkit-scrollbar, .horizontal-scroll-mobile::-webkit-scrollbar, .filters-bar::-webkit-scrollbar {
     display: none;
   }
-  .form-row > *, .records-controls > div > *, .action-row > *, .filter-group > * {
+  .form-row > *, .records-controls > div > *, .action-row > *, .filters-bar > * {
     flex-shrink: 0;
   }
 
@@ -642,10 +673,26 @@ input[type="file"]::file-selector-button:hover {
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
+    padding: 0 12px !important;
   }
-  .teacher-cards-grid, .student-cards-grid, .reports-cards-grid, .class-cards-grid {
+  .teacher-cards-grid, .student-cards-grid, .class-cards-grid {
+    display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
+    padding: 0 12px 12px 12px !important;
+  }
+  .reports-cards-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 0 12px 12px 12px !important;
+  }
+  
+  /* Make sure classes card in grid retains its shape but is squished properly */
+  .class-cards-grid .class-card {
+    border-radius: 12px !important;
+    border: 1px solid var(--color-border) !important;
+    padding: 16px 12px !important;
   }
   
   /* Make all text smaller inside mobile cards to fit 2 per row */
