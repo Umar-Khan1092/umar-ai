@@ -23,7 +23,9 @@ export const Dashboard: React.FC = () => {
   const [totalTeachers, setTotalTeachers] = useState<number | null>(null);
 
   // Recent communications
-  const [communications, setCommunications] = useState<any[]>([]);
+  const [activitiesDate, setActivitiesDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [adminActivities, setAdminActivities] = useState<any[]>([]);
+  const [missingReports, setMissingReports] = useState<any[]>([]);
 
   // Loading state
   const [loading, setLoading] = useState(true);
@@ -109,21 +111,87 @@ export const Dashboard: React.FC = () => {
         .neq('status', 'Paid');
       setPendingFees(pendingCount ?? 0);
 
-      // ── Recent Communications ──
-      const { data: nData } = await db
-        .from('notifications')
+      // ── Admin Activities ──
+      const { data: actData } = await db
+        .from('admin_activities')
         .select('*')
-        .order('timestamp', { ascending: false })
-        .limit(5);
-      if (nData) {
-        setCommunications(nData.filter((n: any) => !(n.sender_role === 'Admin' && n.recipient_role === 'Admin')));
+        // Basic date filter ignoring timezone complexity for simplicity
+        .gte('created_at', `${activitiesDate}T00:00:00.000Z`)
+        .lte('created_at', `${activitiesDate}T23:59:59.999Z`)
+        .order('created_at', { ascending: false });
+      if (actData) {
+        setAdminActivities(actData);
+      } else {
+        setAdminActivities([]);
       }
+
+      // ── Missing Teacher Reports ──
+      const { data: staffData } = await db.from('staff').select('id, name').eq('role', 'Teacher').neq('status', 'Struck Off');
+      const { data: attendanceData } = await db.from('staff_attendance').select('staff_id, status').eq('date', activitiesDate);
+      
+      if (staffData && attendanceData) {
+        // Teachers marked present today
+        const presentStaffIds = attendanceData.filter((a: any) => a.status === 'Present').map((a: any) => a.staff_id);
+        const presentTeachers = staffData.filter((s: any) => presentStaffIds.includes(s.id));
+        
+        // Teachers who submitted a report today
+        const submittedTeacherNames = (actData || [])
+          .filter((a: any) => a.activity_type === 'Teacher Report')
+          .map((a: any) => a.admin_name);
+
+        const missing = presentTeachers.filter((t: any) => !submittedTeacherNames.includes(t.name));
+        setMissingReports(missing);
+      } else {
+        setMissingReports([]);
+      }
+
     } catch (err) {
       console.error('Dashboard fetch error:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activitiesDate]);
+
+  const handleDeleteActivity = async (id: string) => {
+    if (!confirm('Are you sure you want to permanently delete this activity?')) return;
+    const db = adminSupabase || supabase;
+    await db.from('admin_activities').delete().eq('id', id);
+    fetchDashboardData();
+  };
+
+  const handleNotifyMissingReport = async (teacher: any) => {
+    try {
+      const db = adminSupabase || supabase;
+      const title = 'Daily Report Reminder';
+      const message = `Dear ${teacher.name},\n\nJust a friendly reminder to please submit your Daily Report for today in the Teacher Portal. Your updates help us stay aligned!\n\nThank you,\nAdministration`;
+      
+      const { error } = await db.from('notifications').insert({
+        title,
+        message,
+        target_role: 'Teacher',
+        staff_id: teacher.id
+      });
+      if (error) throw error;
+      
+      // Attempt push notification if available
+      try {
+        const authData = await supabase.auth.getSession();
+        if (authData.data.session?.access_token) {
+          await fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session.access_token}` },
+            body: JSON.stringify({ userIds: ['teacher_' + teacher.id], title, message, url: '/teacher/profile', category: 'General', skipHistory: true })
+          });
+        }
+      } catch (e) {
+        console.error('Push notification failed', e);
+      }
+      
+      alert(`Reminder sent to ${teacher.name}!`);
+    } catch (err: any) {
+      alert('Failed to send reminder: ' + err.message);
+    }
+  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -261,44 +329,107 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="card">
-          <h2 className="card-heading" style={{ marginBottom: '16px' }}>Recent Communications</h2>
-          {communications.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {communications.map((c, i) => (
-                <div
-                  key={c.id || i}
-                  style={{
-                    padding: '12px',
-                    background: 'var(--color-bg-secondary)',
-                    borderRadius: '8px',
-                    borderLeft: '4px solid var(--color-primary)',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontWeight: 600, fontSize: '13px' }}>
-                      {c.display_sender_name} → {c.recipient_role}
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
-                      {new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {missingReports.length > 0 && (
+            <div className="card" style={{ borderLeft: '4px solid #ef4444' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <span style={{ fontSize: '18px' }}>⚠️</span>
+                <h2 className="card-heading" style={{ margin: 0, color: '#ef4444' }}>Missing Daily Reports</h2>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '12px', marginTop: 0 }}>
+                These teachers were marked Present today but have not submitted their daily report.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {missingReports.map((teacher: any) => (
+                  <div key={teacher.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-secondary)', padding: '10px 12px', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-main)' }}>{teacher.name}</span>
+                    <button 
+                      onClick={() => handleNotifyMissingReport(teacher)}
+                      style={{ padding: '6px 12px', borderRadius: '6px', background: '#fee2e2', color: '#dc2626', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: '0.2s' }}
+                      onMouseOver={e => e.currentTarget.style.background = '#fecaca'}
+                      onMouseOut={e => e.currentTarget.style.background = '#fee2e2'}
+                    >
+                      Notify
+                    </button>
                   </div>
-                  {c.student_name && (
-                    <div style={{ fontSize: '12px', color: 'var(--color-primary)', marginBottom: '4px', fontWeight: 500 }}>
-                      RE: {c.student_name} ({c.student_class} - {c.student_section})
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 className="card-heading" style={{ margin: 0 }}>Today Activities</h2>
+            <input 
+              type="date" 
+              value={activitiesDate}
+              onChange={(e) => setActivitiesDate(e.target.value)}
+              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
+            />
+          </div>
+          {adminActivities.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {adminActivities.map((act) => {
+                let cardColor = 'var(--color-primary)';
+                if (act.activity_type?.includes('Fee')) cardColor = '#eab308';
+                if (act.activity_type?.includes('Attendance')) cardColor = '#22c55e';
+                if (act.activity_type?.includes('Test')) cardColor = '#ef4444';
+
+                return (
+                  <div
+                    key={act.id}
+                    style={{
+                      padding: '12px',
+                      background: 'var(--color-bg-secondary)',
+                      borderRadius: '8px',
+                      borderLeft: `4px solid ${cardColor}`,
+                      position: 'relative',
+                    }}
+                  >
+                    <button 
+                      onClick={() => handleDeleteActivity(act.id)}
+                      style={{
+                        position: 'absolute', top: '8px', right: '8px', background: 'transparent',
+                        border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer',
+                        fontSize: '14px', padding: '4px'
+                      }}
+                      title="Permanently Delete Activity"
+                    >
+                      ✕
+                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', paddingRight: '20px' }}>
+                      <span style={{ fontWeight: 600, fontSize: '13px', color: cardColor }}>
+                        {act.activity_type}
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                        {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
-                  )}
-                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as any}>
-                    {c.message}
-                  </p>
-                </div>
-              ))}
+                    <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: 'var(--color-text-main)' }}>
+                      {act.description}
+                    </p>
+                    {act.metadata && (
+                      <div style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', background: 'var(--color-background)', padding: '6px', borderRadius: '4px', marginTop: '6px' }}>
+                        {Object.entries(act.metadata).map(([k, v]) => (
+                          <div key={k}><strong style={{ textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}:</strong> {String(v)}</div>
+                        ))}
+                      </div>
+                    )}
+                    {act.admin_name && (
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '6px', fontStyle: 'italic' }}>
+                        By {act.admin_name}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="empty-state-placeholder" style={{ padding: '24px 16px' }}>
-              <p className="body-text" style={{ fontSize: '13px' }}>No recent communications between Parents and Teachers.</p>
+              <p className="body-text" style={{ fontSize: '13px' }}>No activities recorded for this date.</p>
             </div>
           )}
+        </div>
         </div>
       </div>
 

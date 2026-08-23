@@ -458,6 +458,22 @@ export const FeeManagement: React.FC = () => {
         if (error) throw error;
         successCount++;
 
+        // Log Admin Activity
+        await db.from('admin_activities').insert({
+          activity_type: 'Fee Activity',
+          description: `Received ₨${amount.toLocaleString()} for ${v.student_name} (${v.billing_month})`,
+          metadata: {
+            student_name: v.student_name,
+            class: v.class_name,
+            section: v.section,
+            amount_paid: amount,
+            month: v.billing_month
+          },
+          admin_name: 'Admin'
+        }).then(({ error: logErr }) => {
+          if (logErr) console.error('Activity Log Error:', logErr);
+        });
+
         // Send receipt notification
         if (newStatus === 'Paid') {
           const title = `✅ Fee Confirmed — ${v.billing_month}`;
@@ -724,9 +740,9 @@ export const FeeManagement: React.FC = () => {
           statuses: new Set<string>()
         };
       }
-      groups[key].total_billed += (v.total_amount || 0);
-      groups[key].total_received += (v.paid_amount || 0);
-      groups[key].total_remaining += ((v.total_amount || 0) - (v.paid_amount || 0));
+      groups[key].total_billed += (parseFloat(v.total_amount) || 0);
+      groups[key].total_received += (parseFloat(v.paid_amount) || 0);
+      groups[key].total_remaining += ((parseFloat(v.total_amount) || 0) - (parseFloat(v.paid_amount) || 0));
       groups[key].statuses.add(v.status);
     });
     return Object.values(groups).sort((a: any, b: any) => {
@@ -752,7 +768,7 @@ export const FeeManagement: React.FC = () => {
           totalDue: 0
         };
       }
-      const remaining = (v.total_amount || 0) - (v.paid_amount || 0);
+      const remaining = (parseFloat(v.total_amount) || 0) - (parseFloat(v.paid_amount) || 0);
       if (remaining > 0) {
         groups[key].pendingVouchers.push(v);
         groups[key].totalDue += remaining;
@@ -1121,9 +1137,9 @@ export const FeeManagement: React.FC = () => {
               <tbody>
                 {groupedStudents.length > 0 ? (
                   groupedStudents.map((student: any) => {
-                    const totalRemaining = student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.total_amount - (v.paid_amount || 0)), 0);
-                    const totalPayable = student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0) + student.paidVouchers.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0);
-                    const totalPaid = student.paidVouchers.reduce((sum: number, v: any) => sum + (v.paid_amount || 0), 0) + student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.paid_amount || 0), 0);
+                    const totalRemaining = student.pendingVouchers.reduce((sum: number, v: any) => sum + ((parseFloat(v.total_amount) || 0) - (parseFloat(v.paid_amount) || 0)), 0);
+                    const totalPayable = student.pendingVouchers.reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0) + student.paidVouchers.reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0);
+                    const totalPaid = student.paidVouchers.reduce((sum: number, v: any) => sum + (parseFloat(v.paid_amount) || 0), 0) + student.pendingVouchers.reduce((sum: number, v: any) => sum + (parseFloat(v.paid_amount) || 0), 0);
                     
                     return (
                     <tr key={student.student_id}>
@@ -1190,16 +1206,16 @@ export const FeeManagement: React.FC = () => {
       )}
 
       {activeTab === 'reports' && (() => {
-        const reportsTotalExpected = filteredVouchers.reduce((acc, v) => acc + (v.total_amount || 0), 0);
-        const reportsTotalCollected = filteredVouchers.reduce((acc, v) => acc + (v.paid_amount || 0), 0);
+        const reportsTotalExpected = filteredVouchers.reduce((acc, v) => acc + (parseFloat(v.total_amount) || 0), 0);
+        const reportsTotalCollected = filteredVouchers.reduce((acc, v) => acc + (parseFloat(v.paid_amount) || 0), 0);
         const reportsTotalPending = Math.max(0, reportsTotalExpected - reportsTotalCollected);
         const reportsCollectionRate = reportsTotalExpected > 0 ? ((reportsTotalCollected / reportsTotalExpected) * 100).toFixed(1) : '0.0';
         
-        const reportsPendingCount = groupedStudents.filter((s: any) => s.pendingVouchers.some((v: any) => (v.total_amount - (v.paid_amount || 0)) > 0)).length;
+        const reportsPendingCount = groupedStudents.filter((s: any) => s.pendingVouchers.some((v: any) => ((parseFloat(v.total_amount) || 0) - (parseFloat(v.paid_amount) || 0)) > 0)).length;
         const reportsPaidCount = groupedStudents.filter((s: any) => s.paidVouchers.length > 0).length;
 
         let reportsVouchers = reportsView === 'pending'
-          ? groupedStudents.filter((s: any) => s.pendingVouchers.some((v: any) => (v.total_amount - (v.paid_amount || 0)) > 0))
+          ? groupedStudents.filter((s: any) => s.pendingVouchers.some((v: any) => ((parseFloat(v.total_amount) || 0) - (parseFloat(v.paid_amount) || 0)) > 0))
           : groupedStudents.filter((s: any) => s.paidVouchers.length > 0);
 
         return (
@@ -1355,9 +1371,9 @@ export const FeeManagement: React.FC = () => {
                 <tbody>
                   {reportsVouchers.length > 0 ? (
                     reportsVouchers.map((student: any) => {
-                      const totalRemaining = student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.total_amount - (v.paid_amount || 0)), 0);
-                      const totalPayable = student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0) + student.paidVouchers.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0);
-                      const totalPaid = student.paidVouchers.reduce((sum: number, v: any) => sum + (v.paid_amount || 0), 0) + student.pendingVouchers.reduce((sum: number, v: any) => sum + (v.paid_amount || 0), 0);
+                      const totalRemaining = student.pendingVouchers.reduce((sum: number, v: any) => sum + ((parseFloat(v.total_amount) || 0) - (parseFloat(v.paid_amount) || 0)), 0);
+                      const totalPayable = student.pendingVouchers.reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0) + student.paidVouchers.reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0);
+                      const totalPaid = student.paidVouchers.reduce((sum: number, v: any) => sum + (parseFloat(v.paid_amount) || 0), 0) + student.pendingVouchers.reduce((sum: number, v: any) => sum + (parseFloat(v.paid_amount) || 0), 0);
                       
                       return (
                       <tr key={student.student_id}>
@@ -1449,7 +1465,7 @@ export const FeeManagement: React.FC = () => {
                         const dateObj = new Date(v.billing_month + '-01');
                         const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                         
-                        const remaining = (v.total_amount || 0) - (v.paid_amount || 0);
+                        const remaining = (parseFloat(v.total_amount) || 0) - (parseFloat(v.paid_amount) || 0);
                         const received = parseFloat(paymentBreakdown[v.id]) || 0;
                         const rowError = received > remaining;
                         const newRemaining = remaining - received;
@@ -1561,8 +1577,8 @@ export const FeeManagement: React.FC = () => {
       
       {/* History Modal */}
       {showHistoryModal && historyVoucher && (() => {
-        const sumPayable = historyVoucher.total_amount || 0;
-        const sumReceived = historyVoucher.paid_amount || 0;
+        const sumPayable = parseFloat(historyVoucher.total_amount) || 0;
+        const sumReceived = parseFloat(historyVoucher.paid_amount) || 0;
         const sumRemainings = Math.max(0, sumPayable - sumReceived);
 
         return (
@@ -1789,8 +1805,8 @@ export const FeeManagement: React.FC = () => {
                     {selectedStudentForRemainings.pendingVouchers.map((v: any) => {
                       const dateObj = new Date(v.billing_month + '-01');
                       const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                      const paidAmount = v.paid_amount || 0;
-                      const remaining = (v.total_amount || 0) - paidAmount;
+                      const paidAmount = parseFloat(v.paid_amount) || 0;
+                      const remaining = (parseFloat(v.total_amount) || 0) - paidAmount;
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
@@ -1804,10 +1820,10 @@ export const FeeManagement: React.FC = () => {
                     <tr>
                       <td style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #fecaca' }}>Total</td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#15803d', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #fecaca' }}>
-                        {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + (pv.paid_amount || 0), 0).toLocaleString()}
+                        {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + (parseFloat(pv.paid_amount) || 0), 0).toLocaleString()}
                       </td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#b91c1c', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #fecaca' }}>
-                        {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + (pv.total_amount - (pv.paid_amount || 0)), 0).toLocaleString()}
+                        {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + ((parseFloat(pv.total_amount) || 0) - (parseFloat(pv.paid_amount) || 0)), 0).toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>
@@ -1851,7 +1867,7 @@ export const FeeManagement: React.FC = () => {
                       const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                       const paidDateObj = v.paid_date ? new Date(v.paid_date) : null;
                       const paidDateStr = paidDateObj ? paidDateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
-                      const remaining = (v.total_amount || 0) - (v.paid_amount || 0);
+                      const remaining = (parseFloat(v.total_amount) || 0) - (parseFloat(v.paid_amount) || 0);
                       
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -1867,10 +1883,10 @@ export const FeeManagement: React.FC = () => {
                     <tr>
                       <td colSpan={2} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #bbf7d0' }}>Total</td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#15803d', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bbf7d0' }}>
-                        {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + (pv.paid_amount || 0), 0).toLocaleString()}
+                        {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + (parseFloat(pv.paid_amount) || 0), 0).toLocaleString()}
                       </td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#b91c1c', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bbf7d0' }}>
-                        {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + (pv.total_amount - (pv.paid_amount || 0)), 0).toLocaleString()}
+                        {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + ((parseFloat(pv.total_amount) || 0) - (parseFloat(pv.paid_amount) || 0)), 0).toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>

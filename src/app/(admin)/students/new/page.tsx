@@ -36,7 +36,7 @@ export const StudentRegistration: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   
   const [settingsClasses, setSettingsClasses] = useState<string[]>([]);
-  const [settingsSections, setSettingsSections] = useState<string[]>([]);
+  const [classSectionsMap, setClassSectionsMap] = useState<Record<string, string[]>>({});
   const [classFees, setClassFees] = useState<Record<string, { monthly: string, transport: string, academy: string, absent_fine: string }>>({});
   
   const [useTransport, setUseTransport] = useState(false);
@@ -57,19 +57,18 @@ export const StudentRegistration: React.FC = () => {
           const data = res.data.value;
           setSchoolInfo({ name: data.institute_name || 'School Name', logo: data.institute_logo || '' });
           setSettingsClasses(data.classes || []);
-          setSettingsSections(data.sections || []);
+          setClassSectionsMap(data.class_sections || {});
           setClassFees(data.class_fees || {});
           
           if (data.classes?.length > 0 && !formData.academic_class) {
             const firstClass = data.classes[0];
+            const firstClassSections = data.class_sections?.[firstClass] || [];
             setFormData((prev: any) => ({ 
               ...prev, 
               academic_class: firstClass,
+              section: firstClassSections.length > 0 ? firstClassSections[0] : '',
               monthly_fee: data.class_fees?.[firstClass]?.monthly || ''
             }));
-          }
-          if (data.sections?.length > 0 && !formData.section) {
-            setFormData((prev: any) => ({ ...prev, section: data.sections[0] }));
           }
         }
       } catch (err) {
@@ -117,6 +116,34 @@ export const StudentRegistration: React.FC = () => {
 
   const [siblingsDismissed, setSiblingsDismissed] = useState(false);
 
+  // ── Auto-generate Roll Number ────────────────────────────────────────
+  useEffect(() => {
+    const generateRollNumber = async () => {
+      const cls = formData.academic_class;
+      const sec = formData.section;
+      if (!cls || !sec) return;
+      
+      try {
+        const dbClient = adminSupabase || supabase;
+        const { count, error } = await dbClient
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('academic_class', cls)
+          .eq('section', sec)
+          .neq('status', 'Ex-Students')
+          .neq('status', 'Struck Off');
+          
+        if (!error && count !== null) {
+          setFormData(prev => ({ ...prev, roll_number: (count + 1).toString() }));
+        }
+      } catch (err) {
+        console.error('Failed to generate roll number:', err);
+      }
+    };
+    
+    generateRollNumber();
+  }, [formData.academic_class, formData.section]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (fieldErrors[e.target.name]) {
       clearErrors();
@@ -129,6 +156,8 @@ export const StudentRegistration: React.FC = () => {
       const updated = { ...prev, [name]: value };
       if (name === 'academic_class') {
         const fees = classFees[value];
+        const availableSections = classSectionsMap[value] || [];
+        updated.section = availableSections.length > 0 ? availableSections[0] : '';
         if (fees) {
           updated.monthly_fee = fees.monthly || '';
           if (useTransport) updated.transport_fee = fees.transport || '';
@@ -233,6 +262,21 @@ export const StudentRegistration: React.FC = () => {
       const dbClient = adminSupabase || supabase;
       const { error } = await dbClient.from('students').insert(insertPayload);
       if (error) throw error;
+      
+      // Log Admin Activity
+      await dbClient.from('admin_activities').insert({
+        activity_type: 'Student Registration',
+        description: `Registered new student: ${formData.name}`,
+        metadata: {
+          student_name: formData.name,
+          class: formData.academic_class,
+          section: formData.section,
+          roll_number: insertPayload.roll_number || formData.roll_number
+        },
+        admin_name: 'Admin'
+      }).then(({ error: logErr }) => {
+        if (logErr) console.error('Activity Log Error:', logErr);
+      });
       
       setStatus({ type: 'success', message: 'Student registered successfully!' });
       setTimeout(() => router.push('/students'), 1500);
@@ -352,8 +396,7 @@ export const StudentRegistration: React.FC = () => {
         <h2 className="card-heading">Academic Information</h2>
         <div className="form-grid">
           <Input label="Admission Date" name="admission_date" type="date" value={formData.admission_date} onChange={handleChange} required error={fieldErrors['admission_date']} />
-          <Input label="Roll Number (Optional)" name="roll_number" value={formData.roll_number} onChange={handleChange} placeholder="e.g. 104" error={fieldErrors['roll_number']} />
-          
+
           <SearchableSelect 
             label="Class / Grade"
             name="academic_class"
@@ -369,12 +412,14 @@ export const StudentRegistration: React.FC = () => {
             label="Section"
             name="section"
             value={formData.section}
-            options={settingsSections}
+            options={classSectionsMap[formData.academic_class] || []}
             onChange={handleSelectChange}
             required
             placeholder="Select a section"
-            emptyMessage="No sections registered. Please add them in Settings."
+            emptyMessage="No sections registered for this class."
           />
+
+          <Input label="Roll Number" name="roll_number" value={formData.roll_number} onChange={handleChange} placeholder="Auto-calculated (can be edited)" error={fieldErrors['roll_number']} />
         </div>
 
         <hr className="divider" />

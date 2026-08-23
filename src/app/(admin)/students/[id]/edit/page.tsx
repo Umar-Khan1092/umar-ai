@@ -41,7 +41,7 @@ export const EditStudent: React.FC = () => {
   const [isFetching, setIsFetching] = useState(true);
   
   const [settingsClasses, setSettingsClasses] = useState<string[]>([]);
-  const [settingsSections, setSettingsSections] = useState<string[]>([]);
+  const [classSectionsMap, setClassSectionsMap] = useState<Record<string, string[]>>({});
   const [classFees, setClassFees] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export const EditStudent: React.FC = () => {
       .then(res => {
         if (res.data && res.data.value) {
           setSettingsClasses(res.data.value.classes || []);
-          setSettingsSections(res.data.value.sections || []);
+          setClassSectionsMap(res.data.value.class_sections || {});
           setClassFees(res.data.value.class_fees || {});
         }
       })
@@ -110,6 +110,8 @@ export const EditStudent: React.FC = () => {
       const updated = { ...prev, [name]: value };
       if (name === 'academic_class') {
         const fees = classFees[value];
+        const availableSections = classSectionsMap[value] || [];
+        updated.section = availableSections.length > 0 ? availableSections[0] : '';
         if (fees) {
           updated.monthly_fee = fees.monthly || '';
           // Only update transport/academy if they were already using it or if it's set in the old profile
@@ -244,8 +246,7 @@ export const EditStudent: React.FC = () => {
         <h2 className="card-heading">Academic Information</h2>
         <div className="form-grid">
           <Input label="Admission Date" name="admission_date" type="date" value={formData.admission_date} onChange={handleChange} required error={fieldErrors['admission_date']} />
-          <Input label="Roll Number (Optional)" name="roll_number" value={formData.roll_number} onChange={handleChange} placeholder="e.g. 104" error={fieldErrors['roll_number']} />
-          
+
           <SearchableSelect 
             label="Class / Grade"
             name="academic_class"
@@ -261,12 +262,14 @@ export const EditStudent: React.FC = () => {
             label="Section"
             name="section"
             value={formData.section}
-            options={settingsSections}
+            options={classSectionsMap[formData.academic_class] || []}
             onChange={handleSelectChange}
             required
             placeholder="Select a section"
-            emptyMessage="No sections registered. Please add them in Settings."
+            emptyMessage="No sections registered for this class."
           />
+
+          <Input label="Roll Number (Optional)" name="roll_number" value={formData.roll_number} onChange={handleChange} placeholder="e.g. 104" error={fieldErrors['roll_number']} />
         </div>
 
         <hr className="divider" />

@@ -13,7 +13,6 @@ export const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'classes' | 'sections' | 'classForm' | 'degreeForm'>('classes');
   
   const [classes, setClasses] = useState<string[]>([]);
-  const [sections, setSections] = useState<string[]>([]);
   const [classSubjects, setClassSubjects] = useState<Record<string, string[]>>({});
   const [classSections, setClassSections] = useState<Record<string, string[]>>({});
   const [classFees, setClassFees] = useState<Record<string, { monthly: string, transport: string, academy: string, absent_fine: string, custom_fees?: { title: string, amount: string }[] }>>({});
@@ -75,7 +74,6 @@ export const Settings: React.FC = () => {
       .then(res => {
         const data = res.data?.value || {};
         setClasses(data.classes || []);
-        setSections(data.sections || []);
         setClassSubjects(data.class_subjects || {});
         setClassSections(data.class_sections || {});
         setClassFees(data.class_fees || {});
@@ -226,7 +224,7 @@ export const Settings: React.FC = () => {
         ...currentSettings,
         institute_name: instituteName,
         institute_logo: finalLogoPath,
-        classes, sections, class_subjects: classSubjects, class_sections: classSections, class_fees: classFees, 
+        classes, class_subjects: classSubjects, class_sections: classSections, class_fees: classFees, 
         class_promotions: classPromotions,
         school_start_class: schoolStartClass, school_end_class: schoolEndClass,
         working_days: workingDays, school_start_time: schoolStartTime, school_end_time: schoolEndTime,
@@ -392,10 +390,6 @@ export const Settings: React.FC = () => {
         class_fees: newClassFees,
         class_promotions: newClassPromotions
       };
-    } else {
-      const updatedSections = sections.filter(s => s !== deleteTarget.name);
-      setSections(updatedSections);
-      payloadOverride = { sections: updatedSections };
     }
     setDeleteConfirmOpen(false);
     setDeleteTarget(null);
@@ -403,14 +397,6 @@ export const Settings: React.FC = () => {
     await syncBackend(payloadOverride);
   };
 
-  const handleAddSection = async () => {
-    if (newSection.trim() && !sections.includes(newSection.trim())) {
-      const updatedSections = [...sections, newSection.trim()];
-      setSections(updatedSections);
-      setNewSection('');
-      await syncBackend({ sections: updatedSections });
-    }
-  };
 
   const handleUpdateBranding = async () => {
     await syncBackend({ institute_name: instituteName });
@@ -496,22 +482,6 @@ export const Settings: React.FC = () => {
             </div>
           </div>
 
-          <div className="profile-tabs-container card profile-tabs-card" style={{ marginBottom: '16px' }}>
-            <nav className="profile-nav-horizontal" style={{ borderBottom: 'none' }}>
-              <button 
-                className={`profile-tab-horizontal ${activeTab === 'classes' ? 'active' : ''}`}
-                onClick={() => setActiveTab('classes')}
-              >
-                <LayoutGrid size={16} /> Classes & Subjects
-              </button>
-              <button 
-                className={`profile-tab-horizontal ${activeTab === 'sections' ? 'active' : ''}`}
-                onClick={() => setActiveTab('sections')}
-              >
-                <LayoutList size={16} /> Sections
-              </button>
-            </nav>
-          </div>
         </>
       )}
 
@@ -519,14 +489,6 @@ export const Settings: React.FC = () => {
         <div className="classes-tab-content">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 className="section-heading" style={{ margin: 0 }}>Manage Classes & Programs</h2>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button className="btn-secondary" onClick={handleOpenDegreeForm} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Plus size={16} /> Add Degree Program (Semesters)
-              </button>
-              <button className="btn-primary" onClick={handleOpenAddForm} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Plus size={16} /> Add New Class
-              </button>
-            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -756,6 +718,15 @@ export const Settings: React.FC = () => {
             </div>
           </div>
 
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginBottom: '16px', marginTop: '32px' }}>
+            <button className="btn-secondary" onClick={handleOpenDegreeForm} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Plus size={16} /> Add Degree Program (Semesters)
+            </button>
+            <button className="btn-primary" onClick={handleOpenAddForm} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Plus size={16} /> Add New Class
+            </button>
+          </div>
+
           <div className="settings-grid">
             {classes.length === 0 ? (
               <div className="empty-state-placeholder" style={{ gridColumn: '1 / -1' }}>
@@ -826,44 +797,6 @@ export const Settings: React.FC = () => {
                       </div>
                     )}
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'sections' && (
-        <div className="card" style={{ maxWidth: '600px' }}>
-          <h2 className="card-heading">Manage Sections</h2>
-          <p className="body-text" style={{ marginBottom: '16px', fontSize: 'var(--font-size-sm)' }}>
-            Define section categories (e.g., Section A, B, Science, Arts).
-          </p>
-          
-          <div className="add-item-row">
-            <input 
-              type="text" 
-              className="input-field" 
-              placeholder="Enter section name..." 
-              value={newSection}
-              onChange={(e) => setNewSection(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddSection()}
-            />
-            <button className="btn-secondary" onClick={handleAddSection} style={{ padding: '8px 12px' }}>
-              <Plus size={16} />
-            </button>
-          </div>
-
-          <div className="tags-container">
-            {sections.length === 0 ? (
-              <span className="body-text" style={{ fontSize: 'var(--font-size-sm)' }}>No sections added yet.</span>
-            ) : (
-              sections.map(sec => (
-                <div key={sec} className="tag">
-                  {sec}
-                  <button type="button" className="tag-remove" onClick={() => confirmDelete('section', sec)}>
-                    <Trash2 size={14} />
-                  </button>
                 </div>
               ))
             )}
@@ -957,29 +890,59 @@ export const Settings: React.FC = () => {
 
             <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '24px' }}>
               <h3 style={{ fontSize: '1.1rem', marginBottom: '16px' }}>Sections</h3>
-              {sections.length === 0 ? (
-                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>No global sections available. Add them in the Sections tab.</div>
-              ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-                  {sections.map(sec => (
-                    <div key={sec} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input 
-                        type="checkbox" 
-                        id={`modal-sec-${sec}`}
-                        checked={modalClassSections.includes(sec)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setModalClassSections(prev => [...prev, sec]);
-                          } else {
-                            setModalClassSections(prev => prev.filter(s => s !== sec));
-                          }
-                        }}
-                      />
-                      <label htmlFor={`modal-sec-${sec}`} className="input-label" style={{ margin: 0 }}>{sec}</label>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="e.g. A, B, Science, Arts" 
+                  value={newSection}
+                  onChange={(e) => setNewSection(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = newSection.trim();
+                      if (val && !modalClassSections.includes(val)) {
+                        setModalClassSections(prev => [...prev, val]);
+                        setNewSection('');
+                      }
+                    }
+                  }}
+                  style={{ maxWidth: '300px' }}
+                />
+                <button 
+                  type="button"
+                  className="btn-secondary" 
+                  onClick={() => {
+                    const val = newSection.trim();
+                    if (val && !modalClassSections.includes(val)) {
+                      setModalClassSections(prev => [...prev, val]);
+                      setNewSection('');
+                    }
+                  }} 
+                  style={{ padding: '8px 12px' }}
+                >
+                  <Plus size={16} /> Add Section
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {modalClassSections.length === 0 ? (
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>No sections added for this class.</span>
+                ) : (
+                  modalClassSections.map(sec => (
+                    <div key={sec} className="tag" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {sec}
+                      <button 
+                        type="button" 
+                        className="tag-remove" 
+                        onClick={() => setModalClassSections(prev => prev.filter(s => s !== sec))}
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </div>
 
             <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '24px' }}>

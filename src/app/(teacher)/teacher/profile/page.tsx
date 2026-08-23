@@ -18,7 +18,9 @@ export const TeacherProfile: React.FC = () => {
   const [staff, setStaff] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'dashboard' | 'profile' | 'attendance'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'profile' | 'attendance' | 'report'>('dashboard');
+  const [dailyReportText, setDailyReportText] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
   const [filterMode, setFilterMode] = useState<'single' | 'range'>('single');
   const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getMonth());
@@ -72,6 +74,30 @@ export const TeacherProfile: React.FC = () => {
       })();
     }
   }, [user]);
+
+  const submitDailyReport = async () => {
+    if (!dailyReportText.trim()) return;
+    setSubmittingReport(true);
+    try {
+      const { error } = await supabase.from('admin_activities').insert({
+        activity_type: 'Teacher Report',
+        description: dailyReportText.trim(),
+        metadata: {
+          teacher_name: staff.name,
+          department: staff.department || 'Teaching'
+        },
+        admin_name: staff.name
+      });
+      if (error) throw error;
+      setDailyReportText('');
+      setView('dashboard');
+      alert('Daily report submitted successfully!');
+    } catch (err: any) {
+      alert('Failed to submit report: ' + err.message);
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
 
   if (isLoading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#F8FAFC' }}>Loading...</div>;
@@ -178,6 +204,22 @@ export const TeacherProfile: React.FC = () => {
               <div>
                 <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>Notifications</h4>
                 <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>View recent alerts</p>
+              </div>
+            </div>
+            <ChevronRight size={20} color="#94A3B8" />
+          </div>
+
+          <div 
+            onClick={() => setView('report')}
+            style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', padding: '16px', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '12px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckSquare size={20} />
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>Daily Report</h4>
+                <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>Submit your end-of-day report</p>
               </div>
             </div>
             <ChevronRight size={20} color="#94A3B8" />
@@ -386,6 +428,77 @@ export const TeacherProfile: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+    );
+  }
+
+  if (view === 'report') {
+    return (
+      <div className="teacher-page" style={{ backgroundColor: '#FFFFFF', minHeight: '100%', paddingBottom: '24px' }}>
+        <button 
+          onClick={() => setView('dashboard')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0, marginBottom: '24px', fontWeight: 500 }}
+        >
+          <ChevronLeft size={20} /> Back to Dashboard
+        </button>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckSquare size={24} />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>Daily Report</h2>
+              <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', padding: '20px', border: '1px solid #E2E8F0' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1E293B', marginBottom: '8px' }}>
+              What did you accomplish today?
+            </label>
+            <textarea
+              value={dailyReportText}
+              onChange={(e) => setDailyReportText(e.target.value)}
+              placeholder="Write your daily progress report here in paragraph form..."
+              rows={8}
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '12px',
+                border: '1px solid #CBD5E1',
+                fontSize: '14px',
+                color: '#1E293B',
+                outline: 'none',
+                resize: 'vertical',
+                fontFamily: 'inherit'
+              }}
+            />
+            
+            <button
+              onClick={submitDailyReport}
+              disabled={submittingReport || !dailyReportText.trim()}
+              style={{
+                marginTop: '16px',
+                width: '100%',
+                padding: '14px',
+                borderRadius: '12px',
+                backgroundColor: (submittingReport || !dailyReportText.trim()) ? '#93C5FD' : '#2563EB',
+                color: '#FFFFFF',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: '15px',
+                cursor: (submittingReport || !dailyReportText.trim()) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              {submittingReport ? 'Submitting...' : 'Submit Report'}
+            </button>
+          </div>
+        </motion.div>
       </div>
     );
   }

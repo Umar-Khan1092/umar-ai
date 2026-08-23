@@ -61,11 +61,35 @@ export const AdminStaffAttendance: React.FC = () => {
         status: r.status
       }));
 
-      const { error } = await supabase
+      // Find existing records to safely update/insert without needing a multi-column unique constraint
+      const { data: existingData } = await supabase
         .from('staff_attendance')
-        .upsert(upsertPayload, { onConflict: 'staff_id, date' });
+        .select('id, staff_id')
+        .eq('date', date);
 
-      if (error) throw error;
+      const existingMap = new Map((existingData || []).map(e => [e.staff_id, e.id]));
+      
+      const toInsert: any[] = [];
+      const toUpdate: any[] = [];
+
+      upsertPayload.forEach(p => {
+        if (existingMap.has(p.staff_id)) {
+          toUpdate.push({ ...p, id: existingMap.get(p.staff_id) });
+        } else {
+          toInsert.push(p);
+        }
+      });
+
+      if (toInsert.length > 0) {
+        const { error: insErr } = await supabase.from('staff_attendance').insert(toInsert);
+        if (insErr) throw insErr;
+      }
+
+      if (toUpdate.length > 0) {
+        // Upsert by primary key 'id' is safe
+        const { error: updErr } = await supabase.from('staff_attendance').upsert(toUpdate, { onConflict: 'id' });
+        if (updErr) throw updErr;
+      }
       
       // Notify staff with individual professional messages if requested
       if (notifyStaff) {
