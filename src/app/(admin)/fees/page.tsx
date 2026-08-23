@@ -82,6 +82,9 @@ export const FeeManagement: React.FC = () => {
   
   const [showPaidModal, setShowPaidModal] = useState(false);
   const [selectedStudentForPaid, setSelectedStudentForPaid] = useState<any>(null);
+
+  const [showPayableModal, setShowPayableModal] = useState(false);
+  const [selectedStudentForPayable, setSelectedStudentForPayable] = useState<any>(null);
   
   // State for Month Filter (defaults to current month)
   const [monthFilter, setMonthFilter] = useState(() => {
@@ -205,8 +208,8 @@ export const FeeManagement: React.FC = () => {
       const vouchersToInsert = students.map((s: any) => {
         const fees = classFees[s.academic_class] || {};
         const tuition = includeTuition ? (s.tuition_required !== false ? parseFloat(s.monthly_fee || fees.monthly || '0') : 0) : 0;
-        const transport = includeTransport ? (s.transport_required ? parseFloat(s.transport_fee || fees.transport || '0') : 0) : 0;
-        const academy = includeAcademy ? (s.academy_required ? parseFloat(s.academy_fee || fees.academy || '0') : 0) : 0;
+        const transport = includeTransport ? ((s.transport_required || parseFloat(s.transport_fee || '0') > 0) ? parseFloat(s.transport_fee || fees.transport || '0') : 0) : 0;
+        const academy = includeAcademy ? ((s.academy_required || parseFloat(s.academy_fee || '0') > 0) ? parseFloat(s.academy_fee || fees.academy || '0') : 0) : 0;
 
         let customFeeAmount = 0;
         let customFeeTitle = '';
@@ -1381,7 +1384,17 @@ export const FeeManagement: React.FC = () => {
                           <div style={{ fontWeight: 600, color: 'var(--color-text-heading)', fontSize: '14px' }}>{student.student_name}</div>
                           <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Roll: {student.roll_number || 'N/A'} | {student.class_name} ({student.section})</div>
                         </td>
-                        <td style={{ fontWeight: 600, fontSize: '14px' }}>{totalPayable.toLocaleString()}</td>
+                        <td style={{ fontWeight: 600, fontSize: '14px' }}>
+                          <div 
+                            style={{ color: '#3b82f6', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '6px 12px', borderRadius: '6px', background: '#eff6ff', border: '1px solid #bfdbfe', transition: 'all 0.2s', textAlign: 'center', minWidth: '80px' }}
+                            onClick={() => { setSelectedStudentForPayable(student); setShowPayableModal(true); }}
+                            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.95)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
+                            title="View Fee Breakdown"
+                          >
+                            {totalPayable.toLocaleString()}
+                          </div>
+                        </td>
                         {reportsView === 'pending' ? (
                           <td>
                             <div 
@@ -1876,6 +1889,68 @@ export const FeeManagement: React.FC = () => {
                       <td colSpan={2} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #bbf7d0' }}>Total</td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#15803d', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bbf7d0' }}>
                         {[...selectedStudentForPaid.paidVouchers, ...selectedStudentForPaid.pendingVouchers].filter(v => parseFloat(v.paid_amount) > 0).reduce((sum: number, pv: any) => sum + (parseFloat(pv.paid_amount) || 0), 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payable Breakdown Modal */}
+      {showPayableModal && selectedStudentForPayable && (
+        <div className="modal-overlay" onClick={() => setShowPayableModal(false)} style={{ backdropFilter: 'blur(4px)', background: 'rgba(15, 23, 42, 0.4)' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', borderRadius: '20px', padding: '0', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <div style={{ background: 'linear-gradient(to right, #3b82f6, #2563eb)', padding: '20px 24px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CreditCard size={24} /> Payable Fee Breakdown
+                </h2>
+                <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '14px' }}>{selectedStudentForPayable.student_name} • Roll: {selectedStudentForPayable.roll_number || 'N/A'}</p>
+              </div>
+              <button onClick={() => setShowPayableModal(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}>
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div style={{ padding: '24px', background: '#f8fafc' }}>
+              <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ background: '#f1f5f9' }}>
+                    <tr>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Billing Month</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Tuition</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Transport</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Academy</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Custom</th>
+                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Total Payable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...selectedStudentForPayable.pendingVouchers, ...selectedStudentForPayable.paidVouchers]
+                      .sort((a, b) => new Date(b.billing_month + '-01').getTime() - new Date(a.billing_month + '-01').getTime())
+                      .map((v: any) => {
+                      const dateObj = new Date(v.billing_month + '-01');
+                      const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                      return (
+                        <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.tuition_fee) || 0).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.transport_fee) || 0).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.academy_fee) || 0).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.custom_fee_amount) || 0).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1d4ed8', fontWeight: 600, textAlign: 'right' }}>{(parseFloat(v.total_amount) || 0).toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot style={{ background: '#eff6ff' }}>
+                    <tr>
+                      <td colSpan={5} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #bfdbfe' }}>Grand Total Payable</td>
+                      <td style={{ padding: '16px', fontSize: '16px', color: '#1d4ed8', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bfdbfe' }}>
+                        {[...selectedStudentForPayable.pendingVouchers, ...selectedStudentForPayable.paidVouchers].reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0).toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>

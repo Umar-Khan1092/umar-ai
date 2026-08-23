@@ -160,6 +160,8 @@ export const EditStudent: React.FC = () => {
         monthly_fee: parseFloat(formData.monthly_fee) || 0,
         transport_fee: parseFloat(formData.transport_fee) || 0,
         academy_fee: parseFloat(formData.academy_fee) || 0,
+        transport_required: (parseFloat(formData.transport_fee) || 0) > 0,
+        academy_required: (parseFloat(formData.academy_fee) || 0) > 0,
         registration_fee_status: formData.registration_fee_status,
         advance_fee_months: formData.advance_fee_months,
         admission_date: formData.admission_date,

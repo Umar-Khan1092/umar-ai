@@ -32,10 +32,10 @@ export const StudentProfile: React.FC = () => {
         if (st) {
           setStudent(st);
           
-          const { data: fees } = await dbClient.from('fee_vouchers').select('*').eq('student_id', id);
+          const { data: fees } = await dbClient.from('fee_vouchers').select('*').eq('student_id', id).order('issue_date', { ascending: false });
           if (fees) {
             setVouchers(fees);
-            const totalBilled = fees.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0);
+            const totalBilled = fees.reduce((sum: number, v: any) => sum + (v.tuition_fee || 0) + (v.transport_fee || 0) + (v.academy_fee || 0) + (v.custom_fee_amount || 0), 0);
             const totalPaid = fees.reduce((sum: number, v: any) => sum + (v.amount_paid || 0), 0);
             setBalance(totalBilled - totalPaid);
           }
@@ -158,10 +158,10 @@ export const StudentProfile: React.FC = () => {
       setShowPaymentModal(false);
       setPaymentVoucher(null);
       
-      const { data } = await supabase.from('fee_vouchers').select('*').eq('student_id', id);
+      const { data } = await supabase.from('fee_vouchers').select('*').eq('student_id', id).order('issue_date', { ascending: false });
       if (data) {
         setVouchers(data);
-        const totalBilled = data.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0);
+        const totalBilled = data.reduce((sum: number, v: any) => sum + (v.tuition_fee || 0) + (v.transport_fee || 0) + (v.academy_fee || 0) + (v.custom_fee_amount || 0), 0);
         const totalPaid = data.reduce((sum: number, v: any) => sum + (v.amount_paid || 0), 0);
         setBalance(totalBilled - totalPaid);
       }
@@ -204,10 +204,10 @@ export const StudentProfile: React.FC = () => {
       });
       if (error) throw error;
       
-      const { data } = await supabase.from('fee_vouchers').select('*').eq('student_id', id);
+      const { data } = await supabase.from('fee_vouchers').select('*').eq('student_id', id).order('issue_date', { ascending: false });
       if (data) {
         setVouchers(data);
-        const totalBilled = data.reduce((sum: number, v: any) => sum + (v.total_amount || 0), 0);
+        const totalBilled = data.reduce((sum: number, v: any) => sum + (v.tuition_fee || 0) + (v.transport_fee || 0) + (v.academy_fee || 0) + (v.custom_fee_amount || 0), 0);
         const totalPaid = data.reduce((sum: number, v: any) => sum + (v.amount_paid || 0), 0);
         setBalance(totalBilled - totalPaid);
       }
@@ -378,13 +378,13 @@ export const StudentProfile: React.FC = () => {
                   <span className="info-value">₨ {student.monthly_fee || 'Not set'}</span>
                 </div>
               )}
-              {!!student.transport_required && (
+              {(!!student.transport_required || parseFloat(student.transport_fee || '0') > 0) && (
                 <div className="info-item">
                   <span className="info-label"><MapPin size={14} /> Transport Fee</span>
                   <span className="info-value">₨ {student.transport_fee || 'Not set'}</span>
                 </div>
               )}
-              {!!student.academy_required && (
+              {(!!student.academy_required || parseFloat(student.academy_fee || '0') > 0) && (
                 <div className="info-item">
                   <span className="info-label"><BookOpen size={14} /> Academy Fee</span>
                   <span className="info-value">₨ {student.academy_fee || 'Not set'}</span>

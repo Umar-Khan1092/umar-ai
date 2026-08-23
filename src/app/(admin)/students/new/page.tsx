@@ -234,6 +234,8 @@ export const StudentRegistration: React.FC = () => {
         guardian_password: formData.guardian_whatsapp,
         profile_image_url: profileImageUrl,
         status: 'Active',
+        transport_required: useTransport,
+        academy_required: useAcademy,
       };
 
       // ── Create Supabase Auth user via server API route ──────────────
