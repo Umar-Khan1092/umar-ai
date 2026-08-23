@@ -156,8 +156,8 @@ export const StaffReports: React.FC = () => {
         </div>
       </div>
 
-      <div className="records-controls" style={{ marginBottom: '24px', background: 'white', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', flexDirection: 'row' }}>
-        <div className="filters" style={{ width: '100%', gap: '12px', flexWrap: 'nowrap', display: 'flex' }}>
+      <div className="records-controls filters-bar" style={{ marginBottom: '24px', background: 'white', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', flexDirection: 'row', overflowX: 'auto' }}>
+        <div className="filters" style={{ gap: '12px', flexWrap: 'nowrap', display: 'flex', minWidth: 'max-content' }}>
           
           <div className="filter-group" style={{ flex: '1 1 0%', minWidth: 0 }}>
             <Filter size={16} className="filter-icon" style={{ marginRight: '8px', color: '#64748b', flexShrink: 0 }} />

@@ -111,13 +111,22 @@ export default function StudentReports() {
         <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1', minWidth: '250px' }}>
           <div style={{ flex: 1 }}>
             <label style={{ display: 'block', fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '4px' }}>ADMISSION MONTH & YEAR</label>
-            <input 
-              type="month" 
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              className="filter-select"
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', width: '100%', outline: 'none', transition: 'border-color 0.2s', backgroundColor: '#f8fafc' }}
-            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                type="month" 
+                value={monthFilter}
+                onChange={(e) => setMonthFilter(e.target.value)}
+                className="filter-select"
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', transition: 'border-color 0.2s', backgroundColor: '#f8fafc' }}
+              />
+              <button 
+                onClick={() => setMonthFilter('')}
+                title="View All Time"
+                style={{ padding: '0 16px', borderRadius: '8px', border: monthFilter === '' ? '1px solid #818cf8' : '1px solid #cbd5e1', backgroundColor: monthFilter === '' ? '#e0e7ff' : '#fff', color: monthFilter === '' ? '#4338ca' : '#64748b', cursor: 'pointer', fontWeight: 600, fontSize: '13px', transition: 'all 0.2s' }}
+              >
+                Overall
+              </button>
+            </div>
           </div>
         </div>
       </div>

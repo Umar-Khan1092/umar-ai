@@ -22,6 +22,10 @@ export const PromoteStudents: React.FC = () => {
   // Filtered lists
   const [classStudents, setClassStudents] = useState<any[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+
+  const activeSectionsForClass = currentClass 
+    ? Array.from(new Set(students.filter(s => s.academic_class === currentClass && s.status !== 'Ex-Students').map(s => s.section))).filter(Boolean).sort()
+    : [];
   
   const [isPromoting, setIsPromoting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{type: 'success' | 'error' | null, message: string}>({type: null, message: ''});
@@ -165,7 +169,7 @@ export const PromoteStudents: React.FC = () => {
             <div className="form-group" style={{ flex: 1 }}>
               <label>Sections (Select multiple)</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '12px', padding: '12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-button)', backgroundColor: 'var(--color-background)' }}>
-                {(currentClass && classSections[currentClass] ? classSections[currentClass] : settingsSections).map(s => (
+                {activeSectionsForClass.map(s => (
                   <label key={s} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.9rem' }}>
                     <input 
                       type="checkbox" 
@@ -178,7 +182,8 @@ export const PromoteStudents: React.FC = () => {
                     {s}
                   </label>
                 ))}
-                {(!currentClass || !(classSections[currentClass] || settingsSections).length) && <span className="body-text" style={{fontSize: '0.8rem'}}>No sections found.</span>}
+                {!currentClass && <span className="body-text" style={{fontSize: '0.8rem'}}>Select a current class first.</span>}
+                {currentClass && activeSectionsForClass.length === 0 && <span className="body-text" style={{fontSize: '0.8rem'}}>No active students in this class.</span>}
               </div>
             </div>
           </div>
@@ -201,7 +206,7 @@ export const PromoteStudents: React.FC = () => {
             </div>
             <div className="form-group" style={{ flex: 1 }}>
               <label>Promote To Section</label>
-              <select className="input-field" value={targetSection} onChange={e => setTargetSection(e.target.value)}>
+              <select className="input-field" value={targetSection} onChange={e => setTargetSection(e.target.value)} disabled={targetClass === 'Completed'} style={{ opacity: targetClass === 'Completed' ? 0.6 : 1, cursor: targetClass === 'Completed' ? 'not-allowed' : 'pointer' }}>
                 <option value="">-- Select Section --</option>
                 <option value="Completed" style={{fontWeight: 'bold', color: 'var(--color-primary)'}}>Completed</option>
                 {(targetClass && classSections[targetClass] ? classSections[targetClass] : settingsSections).map(s => <option key={s} value={s}>{s}</option>)}

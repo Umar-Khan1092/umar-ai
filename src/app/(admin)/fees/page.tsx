@@ -1039,74 +1039,67 @@ export const FeeManagement: React.FC = () => {
 
       {activeTab === 'receive' && (
         <div className="receive-section">
-          <div className="records-controls" style={{ padding: '12px 0', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <div className="search-box">
-                <Search size={18} className="search-icon" />
-                <div className="search-divider"></div>
+          <div className="records-controls filters-bar" style={{ padding: '12px 0', marginBottom: '16px', display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'nowrap', overflowX: 'hidden' }}>
+              <div className="search-box" style={{ flex: '1 1 auto', minWidth: '0' }}>
+                <Search size={16} className="search-icon" style={{ flexShrink: 0 }} />
+                <div className="search-divider" style={{ flexShrink: 0 }}></div>
                 <input 
                   type="text" 
-                  placeholder="Search students, staff, classes..." 
+                  placeholder="Search..." 
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   className="search-input"
+                  style={{ minWidth: '0' }}
                 />
               </div>
               
               {!selectedClassGroup && (
                 <>
-                  <div className="filter-group">
-                    <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px' }} />
+                  <div className="filter-group" style={{ flex: '1 1 auto', minWidth: '0' }}>
+                    <Filter size={14} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '8px' }} />
                     <select 
                       value={classFilter} 
                       onChange={(e) => setClassFilter(e.target.value)}
                       className="filter-select"
-                      style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px' }}
+                      style={{ paddingLeft: '28px', appearance: 'none', paddingRight: '20px', width: '100%', minWidth: '0', textOverflow: 'ellipsis' }}
                     >
-                      <option value="">All Classes</option>
+                      <option value="">Classes</option>
                       {availableClasses.map((c: any) => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
+                    <ChevronDown size={14} style={{ position: 'absolute', right: '8px', color: '#94a3b8', pointerEvents: 'none' }} />
                   </div>
                   
-                  <div className="filter-group">
-                    <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px' }} />
+                  <div className="filter-group" style={{ flex: '1 1 auto', minWidth: '0' }}>
+                    <Filter size={14} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '8px' }} />
                     <select 
                       value={sectionFilter} 
                       onChange={(e) => setSectionFilter(e.target.value)}
                       className="filter-select"
-                      style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px' }}
+                      style={{ paddingLeft: '28px', appearance: 'none', paddingRight: '20px', width: '100%', minWidth: '0', textOverflow: 'ellipsis' }}
                     >
-                      <option value="">All Sections</option>
+                      <option value="">Sections</option>
                       {availableSections.map((s: any) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
-                </>
-              )}
-            </div>
-            {!selectedClassGroup && (
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s' }}>
+
+                  <div className="filter-group" style={{ flex: '1 1 auto', minWidth: '0', position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s', width: '100%' }}>
                       <div 
                         onClick={() => monthInputRef.current?.showPicker()}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: '8px', 
-                          padding: '8px 12px',
+                          display: 'flex', alignItems: 'center', gap: '4px', 
+                          padding: '8px',
                           color: monthFilter ? '#1e40af' : '#475569', fontWeight: 600, fontSize: '13px',
-                          cursor: 'pointer'
+                          cursor: 'pointer', flex: 1, minWidth: '0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                         }}
                       >
-                        <Calendar size={16} />
-                        <span>{monthFilter ? new Date(parseInt(monthFilter.split('-')[0]), parseInt(monthFilter.split('-')[1]) - 1).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Overall (All Months)'}</span>
+                        <Calendar size={14} style={{ flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{monthFilter ? new Date(parseInt(monthFilter.split('-')[0]), parseInt(monthFilter.split('-')[1]) - 1).toLocaleString('default', { month: 'short', year: '2-digit' }) : 'Month'}</span>
                       </div>
                       {monthFilter && (
                         <div 
                           onClick={(e) => { e.stopPropagation(); setMonthFilter(''); }}
-                          style={{ padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', borderLeft: '1px solid #bfdbfe', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)' }}
-                          title="Switch to Overall"
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
+                          style={{ padding: '8px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', borderLeft: '1px solid #bfdbfe', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)' }}
                         >
                           <X size={14} />
                         </div>
@@ -1122,9 +1115,9 @@ export const FeeManagement: React.FC = () => {
                         opacity: 0, overflow: 'hidden', pointerEvents: 'none'
                       }}
                     />
-                </div>
-              </div>
-            )}
+                  </div>
+                </>
+              )}
           </div>
           
           <div className="table-container">
@@ -1230,55 +1223,54 @@ export const FeeManagement: React.FC = () => {
               <p className="body-text">At-a-glance financial summary and invoice tracking for the selected period.</p>
             </div>
 
-            <div className="records-controls" style={{ padding: '12px 16px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-secondary)', minWidth: '50px' }}>Filters:</div>
-                <div className="filter-group" style={{ flex: '1 1 min-content' }}>
-                  <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px' }} />
-                  <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px' }}>
+            <div className="records-controls" style={{ padding: '12px 16px', marginBottom: '24px', backgroundColor: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', width: '100%', alignItems: 'center' }}>
+                <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-secondary)', gridColumn: '1 / -1' }}>Filters:</div>
+                
+                <div className="filter-group" style={{ position: 'relative', width: '100%' }}>
+                  <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px', width: '100%', textOverflow: 'ellipsis' }}>
                     <option value="">All Classes</option>
                     {availableClasses.map((c: any) => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
+                  <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none', top: '50%', transform: 'translateY(-50%)' }} />
                 </div>
-                <div className="filter-group" style={{ flex: '1 1 min-content' }}>
-                  <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px' }} />
-                  <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px' }}>
+                
+                <div className="filter-group" style={{ position: 'relative', width: '100%' }}>
+                  <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px', width: '100%', textOverflow: 'ellipsis' }}>
                     <option value="">All Sections</option>
                     {availableSections.map((s: any) => <option key={s} value={s}>{s}</option>)}
                   </select>
-                  <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
+                  <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none', top: '50%', transform: 'translateY(-50%)' }} />
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s' }}>
-                  <div 
-                    onClick={() => monthInputRef.current?.showPicker()}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '8px', 
-                      padding: '8px 12px',
-                      color: monthFilter ? '#1e40af' : '#475569', fontWeight: 600, fontSize: '13px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Calendar size={16} />
-                    <span>{monthFilter ? new Date(parseInt(monthFilter.split('-')[0]), parseInt(monthFilter.split('-')[1]) - 1).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Overall (All Months)'}</span>
-                  </div>
-                  {monthFilter && (
+                
+                <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center', gridColumn: '1 / -1' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s', width: '100%' }}>
                     <div 
-                      onClick={(e) => { e.stopPropagation(); setMonthFilter(''); }}
-                      style={{ padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', borderLeft: '1px solid #bfdbfe', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)' }}
-                      title="Switch to Overall"
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
+                      onClick={() => monthInputRef.current?.showPicker()}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px', 
+                        padding: '8px 12px',
+                        color: monthFilter ? '#1e40af' : '#475569', fontWeight: 600, fontSize: '13px',
+                        cursor: 'pointer', flex: 1
+                      }}
                     >
-                      <X size={14} />
+                      <Calendar size={16} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{monthFilter ? new Date(parseInt(monthFilter.split('-')[0]), parseInt(monthFilter.split('-')[1]) - 1).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Overall (All Months)'}</span>
                     </div>
-                  )}
+                    {monthFilter && (
+                      <div 
+                        onClick={(e) => { e.stopPropagation(); setMonthFilter(''); }}
+                        style={{ padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', borderLeft: '1px solid #bfdbfe', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)' }}
+                        title="Switch to Overall"
+                      >
+                        <X size={14} />
+                      </div>
+                    )}
+                  </div>
+                  <input ref={monthInputRef} type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} />
                 </div>
-                <input ref={monthInputRef} type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} />
-              </div>
               </div>
             </div>
 
@@ -1390,16 +1382,21 @@ export const FeeManagement: React.FC = () => {
                           <div style={{ fontWeight: 600, color: 'var(--color-text-heading)', fontSize: '14px' }}>{student.student_name}</div>
                           <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Roll: {student.roll_number || 'N/A'} | {student.class_name} ({student.section})</div>
                         </td>
-                        <td style={{ fontWeight: 600, fontSize: '14px' }}>
-                          <div 
-                            style={{ color: '#3b82f6', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '6px 12px', borderRadius: '6px', background: '#eff6ff', border: '1px solid #bfdbfe', transition: 'all 0.2s', textAlign: 'center', minWidth: '80px' }}
+                        <td style={{ padding: '16px 24px' }}>
+                          <button 
                             onClick={() => { setSelectedStudentForPayable(student); setShowPayableModal(true); }}
-                            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.95)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
-                            title="View Fee Breakdown"
+                            style={{ 
+                              padding: '6px 16px', background: '#eff6ff', color: '#1d4ed8', 
+                              border: '1px solid #bfdbfe', borderRadius: '100px', cursor: 'pointer', 
+                              fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px',
+                              transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#dbeafe'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.transform = 'none'; }}
+                            title="View Payable Breakdown"
                           >
                             {totalPayable.toLocaleString()}
-                          </div>
+                          </button>
                         </td>
                         {reportsView === 'pending' ? (
                           <td>
@@ -1816,10 +1813,6 @@ export const FeeManagement: React.FC = () => {
                   <thead style={{ background: '#f1f5f9' }}>
                     <tr>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Pending Month</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Tuition</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Transport</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Academy</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Custom</th>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Remaining Dues</th>
                     </tr>
                   </thead>
@@ -1830,17 +1823,9 @@ export const FeeManagement: React.FC = () => {
                       const paidAmount = parseFloat(v.paid_amount) || 0;
                       const remaining = (parseFloat(v.total_amount) || 0) - paidAmount;
                       
-                      // Calculate proportional remaining for each breakdown if partially paid
-                      // For simplicity in display, we just show the base fees if it's completely unpaid, 
-                      // or if it's partially paid, we could just show the raw base fee amounts to show what makes up the bill.
-                      // Since they want breakdown, we'll show the base amounts.
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.tuition_fee) || 0).toLocaleString()}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.transport_fee) || 0).toLocaleString()}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.academy_fee) || 0).toLocaleString()}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.custom_fee_amount) || 0).toLocaleString()}</td>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#dc2626', fontWeight: 600, textAlign: 'right' }}>{remaining.toLocaleString()}</td>
                         </tr>
                       );
@@ -1848,7 +1833,7 @@ export const FeeManagement: React.FC = () => {
                   </tbody>
                   <tfoot style={{ background: '#fdf2f2' }}>
                     <tr>
-                      <td colSpan={5} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #fecaca' }}>Total Pending</td>
+                      <td style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #fecaca' }}>Total Pending</td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#b91c1c', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #fecaca' }}>
                         {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + ((parseFloat(pv.total_amount) || 0) - (parseFloat(pv.paid_amount) || 0)), 0).toLocaleString()}
                       </td>
@@ -1937,42 +1922,51 @@ export const FeeManagement: React.FC = () => {
             <div style={{ padding: '24px', background: '#f8fafc' }}>
               <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead style={{ background: '#f1f5f9' }}>
-                    <tr>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Billing Month</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Tuition</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Transport</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Academy</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Custom</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Total Payable</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...selectedStudentForPayable.pendingVouchers, ...selectedStudentForPayable.paidVouchers]
-                      .sort((a, b) => new Date(b.billing_month + '-01').getTime() - new Date(a.billing_month + '-01').getTime())
-                      .map((v: any) => {
-                      const dateObj = new Date(v.billing_month + '-01');
-                      const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                      return (
-                        <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.tuition_fee) || 0).toLocaleString()}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.transport_fee) || 0).toLocaleString()}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.academy_fee) || 0).toLocaleString()}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.custom_fee_amount) || 0).toLocaleString()}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1d4ed8', fontWeight: 600, textAlign: 'right' }}>{(parseFloat(v.total_amount) || 0).toLocaleString()}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot style={{ background: '#eff6ff' }}>
-                    <tr>
-                      <td colSpan={5} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #bfdbfe' }}>Grand Total Payable</td>
-                      <td style={{ padding: '16px', fontSize: '16px', color: '#1d4ed8', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bfdbfe' }}>
-                        {[...selectedStudentForPayable.pendingVouchers, ...selectedStudentForPayable.paidVouchers].reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0).toLocaleString()}
-                      </td>
-                    </tr>
-                  </tfoot>
+                  {(() => {
+                    const allVouchers = [...selectedStudentForPayable.pendingVouchers, ...selectedStudentForPayable.paidVouchers].sort((a, b) => new Date(b.billing_month + '-01').getTime() - new Date(a.billing_month + '-01').getTime());
+                    const hasTransport = allVouchers.some(v => parseFloat(v.transport_fee) > 0);
+                    const hasAcademy = allVouchers.some(v => parseFloat(v.academy_fee) > 0);
+                    const hasCustom = allVouchers.some(v => parseFloat(v.custom_fee_amount) > 0);
+                    
+                    return (
+                      <>
+                        <thead style={{ background: '#f1f5f9' }}>
+                          <tr>
+                            <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Billing Month</th>
+                            <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Tuition</th>
+                            {hasTransport && <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Transport</th>}
+                            {hasAcademy && <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Academy</th>}
+                            {hasCustom && <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Custom</th>}
+                            <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Total Payable</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allVouchers.map((v: any) => {
+                            const dateObj = new Date(v.billing_month + '-01');
+                            const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                            return (
+                              <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
+                                <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.tuition_fee) || 0).toLocaleString()}</td>
+                                {hasTransport && <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.transport_fee) || 0).toLocaleString()}</td>}
+                                {hasAcademy && <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.academy_fee) || 0).toLocaleString()}</td>}
+                                {hasCustom && <td style={{ padding: '12px 16px', fontSize: '14px', color: '#475569', textAlign: 'right' }}>{(parseFloat(v.custom_fee_amount) || 0).toLocaleString()}</td>}
+                                <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1d4ed8', fontWeight: 600, textAlign: 'right' }}>{(parseFloat(v.total_amount) || 0).toLocaleString()}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot style={{ background: '#eff6ff' }}>
+                          <tr>
+                            <td colSpan={1 + 1 + (hasTransport ? 1 : 0) + (hasAcademy ? 1 : 0) + (hasCustom ? 1 : 0)} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #bfdbfe' }}>Grand Total Payable</td>
+                            <td style={{ padding: '16px', fontSize: '16px', color: '#1d4ed8', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bfdbfe' }}>
+                              {allVouchers.reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0).toLocaleString()}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </>
+                    );
+                  })()}
                 </table>
               </div>
             </div>

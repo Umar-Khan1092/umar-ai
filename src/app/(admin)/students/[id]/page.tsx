@@ -35,8 +35,8 @@ export const StudentProfile: React.FC = () => {
           const { data: fees } = await dbClient.from('fee_vouchers').select('*').eq('student_id', id).order('issue_date', { ascending: false });
           if (fees) {
             setVouchers(fees);
-            const totalBilled = fees.reduce((sum: number, v: any) => sum + (v.tuition_fee || 0) + (v.transport_fee || 0) + (v.academy_fee || 0) + (v.custom_fee_amount || 0), 0);
-            const totalPaid = fees.reduce((sum: number, v: any) => sum + (v.amount_paid || 0), 0);
+            const totalBilled = fees.reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0);
+            const totalPaid = fees.reduce((sum: number, v: any) => sum + (parseFloat(v.paid_amount) || 0), 0);
             setBalance(totalBilled - totalPaid);
           }
 
@@ -76,7 +76,10 @@ export const StudentProfile: React.FC = () => {
     };
 
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000);
+    const interval = setInterval(() => {
+      fetchData();
+      fetchNotifications();
+    }, 10000);
     return () => clearInterval(interval);
   }, [id]);
 
@@ -143,13 +146,14 @@ export const StudentProfile: React.FC = () => {
         newAcc[k] = (newAcc[k] || 0) + breakdownToSubmit[k];
       }
 
-      const totalPaidSoFar = (paymentVoucher.amount_paid || 0) + amount;
-      const newStatus = totalPaidSoFar >= paymentVoucher.total_amount ? 'Paid' : 'Partial';
+      const totalPaidSoFar = (parseFloat(paymentVoucher.paid_amount) || 0) + amount;
+      
+      const newStatus = totalPaidSoFar >= (parseFloat(paymentVoucher.total_amount) || 0) ? 'Paid' : 'Partial';
 
       const { error } = await supabase.from('fee_vouchers').update({
-        amount_paid: totalPaidSoFar,
+        paid_amount: totalPaidSoFar,
         amount_paid_breakdown: newAcc,
-        payment_date: new Date().toISOString().split('T')[0],
+        paid_date: new Date().toISOString(),
         status: newStatus
       }).eq('id', paymentVoucher.id);
       
@@ -161,8 +165,8 @@ export const StudentProfile: React.FC = () => {
       const { data } = await supabase.from('fee_vouchers').select('*').eq('student_id', id).order('issue_date', { ascending: false });
       if (data) {
         setVouchers(data);
-        const totalBilled = data.reduce((sum: number, v: any) => sum + (v.tuition_fee || 0) + (v.transport_fee || 0) + (v.academy_fee || 0) + (v.custom_fee_amount || 0), 0);
-        const totalPaid = data.reduce((sum: number, v: any) => sum + (v.amount_paid || 0), 0);
+        const totalBilled = data.reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0);
+        const totalPaid = data.reduce((sum: number, v: any) => sum + (parseFloat(v.paid_amount) || 0), 0);
         setBalance(totalBilled - totalPaid);
       }
     } catch (err: any) {
@@ -196,19 +200,18 @@ export const StudentProfile: React.FC = () => {
         billing_month: new Date().toLocaleString('default', { month: 'short', year: 'numeric' }),
         issue_date: new Date().toISOString().split('T')[0],
         total_amount: 0,
-        amount_paid: amount,
-        payment_date: new Date().toISOString().split('T')[0],
+        paid_amount: amount,
+        paid_date: new Date().toISOString(),
         status: 'Paid',
-        custom_fee_title: 'Advance Payment',
-        custom_fee_amount: 0
+        other_fee: 0
       });
       if (error) throw error;
       
       const { data } = await supabase.from('fee_vouchers').select('*').eq('student_id', id).order('issue_date', { ascending: false });
       if (data) {
         setVouchers(data);
-        const totalBilled = data.reduce((sum: number, v: any) => sum + (v.tuition_fee || 0) + (v.transport_fee || 0) + (v.academy_fee || 0) + (v.custom_fee_amount || 0), 0);
-        const totalPaid = data.reduce((sum: number, v: any) => sum + (v.amount_paid || 0), 0);
+        const totalBilled = data.reduce((sum: number, v: any) => sum + (parseFloat(v.total_amount) || 0), 0);
+        const totalPaid = data.reduce((sum: number, v: any) => sum + (parseFloat(v.paid_amount) || 0), 0);
         setBalance(totalBilled - totalPaid);
       }
     } catch (err: any) {

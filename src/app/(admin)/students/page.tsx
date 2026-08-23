@@ -32,6 +32,7 @@ export const StudentRecords: React.FC = () => {
   const [classFilter, setClassFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [settingsClasses, setSettingsClasses] = useState<string[]>([]);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export const StudentRecords: React.FC = () => {
 
   const fetchStudents = async () => {
     try {
+      setIsLoading(true);
       const dbClient = adminSupabase || supabase;
       const { data, error } = await dbClient.from('students').select('*').order('name');
       if (error) throw error;
@@ -79,6 +81,8 @@ export const StudentRecords: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -239,7 +243,12 @@ export const StudentRecords: React.FC = () => {
           </div>
 
           <div className="class-cards-grid">
-            {filteredGroups.map(group => (
+            {isLoading ? (
+              <div style={{ gridColumn: '1 / -1', padding: '48px', textAlign: 'center', color: '#64748b' }}>
+                <div style={{ display: 'inline-block', width: '24px', height: '24px', border: '3px solid #e2e8f0', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <div style={{ marginTop: '12px' }}>Loading classes...</div>
+              </div>
+            ) : filteredGroups.map(group => (
               <div key={`${group.className}-${group.section}`} className="class-card" style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedClassGroup(group)}>
                 <div style={{ position: 'absolute', top: '-15px', right: '-15px', color: '#f1f5f9', zIndex: 0 }}>
                   <GraduationCap size={100} />

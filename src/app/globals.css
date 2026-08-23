@@ -364,7 +364,7 @@ input[type="file"]::file-selector-button:hover {
 
 @media (min-width: 768px) {
   .teacher-cards-grid, .class-cards-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 }
 
@@ -568,10 +568,10 @@ input[type="file"]::file-selector-button:hover {
   }
   
   .data-table {
-    min-width: 600px; /* Reduced to allow fitting more naturally */
+    min-width: 800px; /* Increased to prevent squishing of columns (e.g. staff table) */
   }
   .data-table th, .data-table td {
-    padding: 8px 10px !important;
+    padding: 10px 12px !important;
     font-size: 13px !important;
   }
 
@@ -618,14 +618,35 @@ input[type="file"]::file-selector-button:hover {
     flex-direction: row !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
-    width: 100%;
-    max-width: 100%;
     overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    gap: var(--space-2) !important;
-    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
   }
+
+  /* Form Grid Overrides for Mobile */
+  .registration-page {
+    padding: 0 !important;
+  }
+  .registration-inner {
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    box-shadow: none !important;
+    padding: 16px 12px !important;
+  }
+  .form-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .input-label {
+    font-size: 11px !important; /* Slightly smaller for 2 per row */
+  }
+  .input-field {
+    padding: 8px 10px !important;
+    font-size: 13px !important;
+  }
+
   .form-row::-webkit-scrollbar, .records-controls > div::-webkit-scrollbar, .action-row::-webkit-scrollbar, .horizontal-scroll-mobile::-webkit-scrollbar, .filters-bar::-webkit-scrollbar {
     display: none;
   }
@@ -698,6 +719,12 @@ input[type="file"]::file-selector-button:hover {
   /* Make all text smaller inside mobile cards to fit 2 per row */
   .kpi-title { font-size: 11px !important; }
   .kpi-value { font-size: 18px !important; }
+  
+  .class-cards-grid .class-name { font-size: 15px !important; white-space: normal; word-break: break-word; }
+  .class-cards-grid .section-name { font-size: 12px !important; }
+  .class-cards-grid .student-count-badge { padding: 4px 6px !important; font-size: 11px !important; gap: 4px !important; white-space: nowrap; }
+  .class-cards-grid .class-icon { width: 36px !important; height: 36px !important; }
+  .class-cards-grid .class-icon svg { width: 18px !important; height: 18px !important; }
   .kpi-trend { font-size: 10px !important; }
 
   /* Modals */
