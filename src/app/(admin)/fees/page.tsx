@@ -1274,7 +1274,7 @@ export const FeeManagement: React.FC = () => {
             </div>
 
             {/* Dashboard Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+            <div className="reports-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '32px' }}>
               <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid var(--color-border)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                    <div style={{ padding: '6px', borderRadius: '8px', backgroundColor: '#eff6ff', color: '#3b82f6' }}><CreditCard size={18} /></div>

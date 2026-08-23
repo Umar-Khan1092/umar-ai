@@ -17,7 +17,7 @@ export const AttendanceLayout = ({ children }: { children: React.ReactNode }) =>
   return (
     <div className="student-layout">
       <div style={{ marginBottom: '8px', padding: '4px 0' }}>
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '2px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+        <nav className="nav-tabs-mobile" style={{ display: 'flex', alignItems: 'center', gap: '2px', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {attendanceNavItems.map(item => {
             const Icon = item.icon;
             return (

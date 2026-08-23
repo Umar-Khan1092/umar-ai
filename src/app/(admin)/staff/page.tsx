@@ -242,7 +242,7 @@ export const StaffRecords: React.FC = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>
                   No staff members found matching your criteria.
                 </td>
               </tr>

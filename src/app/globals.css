@@ -504,10 +504,19 @@ input[type="file"]::file-selector-button:hover {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-sm);
+    scrollbar-width: none;
+    position: relative;
+  }
+  .table-container::-webkit-scrollbar {
+    display: none;
   }
   
   .data-table {
-    min-width: 800px; /* Ensure tables don't squish too much on mobile */
+    min-width: 600px; /* Reduced to allow fitting more naturally */
+  }
+  .data-table th, .data-table td {
+    padding: 8px 10px !important;
+    font-size: 13px !important;
   }
 
   /* Layout wrappers */
@@ -518,43 +527,90 @@ input[type="file"]::file-selector-button:hover {
     padding: var(--space-2);
   }
 
-  /* Form & Controls stacking */
-  .form-row, .records-controls > div, .action-row, .filter-group {
-    flex-direction: column !important;
-    align-items: stretch !important;
+  /* Professional Horizontal Scrolling for Filters & Controls */
+  .form-row, .records-controls > div, .action-row, .filter-group, .horizontal-scroll-mobile {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
     width: 100%;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     gap: var(--space-2) !important;
+    padding-bottom: 2px;
+  }
+  .form-row::-webkit-scrollbar, .records-controls > div::-webkit-scrollbar, .action-row::-webkit-scrollbar, .filter-group::-webkit-scrollbar, .horizontal-scroll-mobile::-webkit-scrollbar {
+    display: none;
+  }
+  .form-row > *, .records-controls > div > *, .action-row > *, .filter-group > * {
+    flex-shrink: 0;
   }
 
   .records-controls {
     flex-direction: column;
+    gap: 12px;
   }
 
-  .form-group, .search-box {
-    width: 100% !important;
-    max-width: 100% !important;
+  .form-group {
+    /* Allow form groups to shrink and fit side-by-side or horizontally scroll */
+    min-width: 140px;
+  }
+  .search-box {
+    width: 200px !important; /* Fixed width in mobile to allow scrolling alongside others */
+    min-width: 200px;
   }
   
   /* Horizontal scrolling for tabs */
-  .profile-tabs-container, .profile-nav-horizontal {
+  .profile-tabs-container, .profile-nav-horizontal, .nav-tabs-mobile {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     white-space: nowrap;
     width: 100%;
     scrollbar-width: none; /* Firefox */
+    display: flex;
+    flex-wrap: nowrap !important;
+    mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+    padding: 0 4px;
   }
-  .profile-tabs-container::-webkit-scrollbar, .profile-nav-horizontal::-webkit-scrollbar {
+  .profile-tabs-container::-webkit-scrollbar, .profile-nav-horizontal::-webkit-scrollbar, .nav-tabs-mobile::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
   }
   .profile-tab-horizontal {
     flex-shrink: 0;
+    font-size: 12px !important;
+    padding: 6px 10px !important;
   }
+
+  /* Specific Card Grids overrides for mobile (2 per row) */
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .teacher-cards-grid, .student-cards-grid, .reports-cards-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  
+  /* Make all text smaller inside mobile cards to fit 2 per row */
+  .kpi-title { font-size: 11px !important; }
+  .kpi-value { font-size: 18px !important; }
+  .kpi-trend { font-size: 10px !important; }
 
   /* Modals */
   .modal-content {
     width: 95% !important;
     max-height: 90vh !important;
     overflow-y: auto !important;
-    padding: var(--space-3) !important;
+    padding: 16px !important;
+  }
+
+  .stacked-header-mobile {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .full-width-mobile {
+    width: 100% !important;
+    justify-content: center;
   }
 }

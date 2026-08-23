@@ -229,7 +229,7 @@ export default function FinanceDashboard() {
           <p style={{ margin: '4px 0 0 0', color: '#64748B', fontSize: '15px' }}>Monthly Financial Overview & Reports</p>
         </div>
         
-        <div style={{ display: 'flex', gap: '12px', background: '#FFF', padding: '12px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #E2E8F0' }}>
+        <div className="horizontal-scroll-mobile" style={{ display: 'flex', gap: '12px', background: '#FFF', padding: '12px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #E2E8F0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderRight: '1px solid #E2E8F0', paddingRight: '12px' }}>
             <Filter size={18} color="#64748B" />
             <select 

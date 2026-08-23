@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Save, Calendar, UserCheck, AlertCircle, AlertTriangle } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, adminSupabase } from '@/lib/supabase';
 
 
 export const AdminStaffAttendance: React.FC = () => {
@@ -61,8 +61,10 @@ export const AdminStaffAttendance: React.FC = () => {
         status: r.status
       }));
 
+      const dbClient = adminSupabase || supabase;
+
       // Find existing records to safely update/insert without needing a multi-column unique constraint
-      const { data: existingData } = await supabase
+      const { data: existingData } = await dbClient
         .from('staff_attendance')
         .select('id, staff_id')
         .eq('date', date);
@@ -81,13 +83,13 @@ export const AdminStaffAttendance: React.FC = () => {
       });
 
       if (toInsert.length > 0) {
-        const { error: insErr } = await supabase.from('staff_attendance').insert(toInsert);
+        const { error: insErr } = await dbClient.from('staff_attendance').insert(toInsert);
         if (insErr) throw insErr;
       }
 
       if (toUpdate.length > 0) {
         // Upsert by primary key 'id' is safe
-        const { error: updErr } = await supabase.from('staff_attendance').upsert(toUpdate, { onConflict: 'id' });
+        const { error: updErr } = await dbClient.from('staff_attendance').upsert(toUpdate, { onConflict: 'id' });
         if (updErr) throw updErr;
       }
       

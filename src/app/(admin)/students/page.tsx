@@ -213,7 +213,7 @@ export const StudentRecords: React.FC = () => {
             </div>
           </div>
 
-          <div className="filters-bar" style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap', backgroundColor: '#fff', padding: '16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div className="filters-bar horizontal-scroll-mobile" style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap', backgroundColor: '#fff', padding: '16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <div className="search-input-wrapper" style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
               <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
@@ -238,7 +238,7 @@ export const StudentRecords: React.FC = () => {
             </div>
           </div>
 
-          <div className="class-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+          <div className="class-grid reports-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
             {filteredGroups.map(group => (
               <div key={`${group.className}-${group.section}`} className="class-card" style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedClassGroup(group)}>
                 <div style={{ position: 'absolute', top: '-15px', right: '-15px', color: '#f1f5f9', zIndex: 0 }}>

@@ -309,7 +309,7 @@ export const Dashboard: React.FC = () => {
             />
           </div>
           {adminActivities.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="teacher-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
               {adminActivities.map((act) => {
                 let cardColor = 'var(--color-primary)';
                 if (act.activity_type?.includes('Fee')) cardColor = '#eab308';

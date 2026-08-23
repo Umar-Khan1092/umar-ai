@@ -491,7 +491,7 @@ export const Settings: React.FC = () => {
             <h2 className="section-heading" style={{ margin: 0 }}>Manage Classes & Programs</h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          <div className="reports-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '24px' }}>
             <div className="premium-class-card" style={{ padding: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-text-main)' }}>Starting Class</h3>
@@ -763,7 +763,7 @@ export const Settings: React.FC = () => {
                       )}
                     </div>
 
-                    <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'var(--color-background)', padding: '8px', borderRadius: '6px' }}>
+                    <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', background: 'var(--color-background)', padding: '8px', borderRadius: '6px' }}>
                       <div style={{ fontSize: '12px' }}>
                         <span style={{ color: 'var(--color-text-muted)' }}>Monthly Fee:</span> <strong>{classFees[cls]?.monthly || 'N/A'}</strong>
                       </div>
@@ -816,7 +816,7 @@ export const Settings: React.FC = () => {
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1000px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px', alignItems: 'start' }}>
               <div className="input-group" style={{ margin: 0 }}>
                 <label className="input-label">Class Name *</label>
                 <input 

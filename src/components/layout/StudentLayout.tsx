@@ -30,8 +30,8 @@ export const StudentLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="student-layout">
       {!hideNav && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '4px 0' }}>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        <div className="stacked-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '4px 0', gap: '12px' }}>
+          <nav className="nav-tabs-mobile" style={{ flex: 1 }}>
             {studentNavItems.map(item => {
               const Icon = item.icon;
               const isActive = item.exact ? pathname === item.path : pathname.startsWith(item.path);
@@ -48,8 +48,8 @@ export const StudentLayout = ({ children }: { children: React.ReactNode }) => {
             })}
           </nav>
           <button
-            className="btn-primary"
-            style={{ flexShrink: 0, marginLeft: '12px', height: '38px', padding: '0 16px', fontSize: '13.5px' }}
+            className="btn-primary full-width-mobile"
+            style={{ flexShrink: 0, height: '38px', padding: '0 16px', fontSize: '13.5px' }}
             onClick={() => router.push('/students/new')}
           >
             Register New

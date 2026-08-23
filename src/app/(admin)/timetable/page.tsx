@@ -1009,39 +1009,42 @@ export const AdminTimetable: React.FC = () => {
                   </div>
 
                   {isModel1 ? (
-                    <div style={{ padding: '16px' }}>
+                    <div style={{ padding: '16px' }} className="table-container-wrapper">
                       <h4 style={{ margin: '0 0 12px 0', color: 'var(--color-text-secondary)', fontSize: '1rem' }}>Timetable</h4>
-                      <table className="data-table" style={{ margin: 0, width: '100%' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ backgroundColor: 'white' }}>Section</th>
-                            {Array.from(new Set(group.entries.map(e => e.subject))).sort().map(sub => (
-                              <th key={sub} style={{ backgroundColor: 'white', textAlign: 'center' }}>{sub}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.sections.sort().map(sec => (
-                            <tr key={sec}>
-                              <td style={{ fontWeight: 500 }}>{sec}</td>
+                      <div className="table-container">
+                        <table className="data-table" style={{ margin: 0, width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ backgroundColor: 'white' }}>Section</th>
                               {Array.from(new Set(group.entries.map(e => e.subject))).sort().map(sub => (
-                                <td key={sub} style={{ textAlign: 'center', color: 'var(--color-primary)' }}>✓</td>
+                                <th key={sub} style={{ backgroundColor: 'white', textAlign: 'center' }}>{sub}</th>
                               ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {group.sections.sort().map(sec => (
+                              <tr key={sec}>
+                                <td style={{ fontWeight: 500 }}>{sec}</td>
+                                {Array.from(new Set(group.entries.map(e => e.subject))).sort().map(sub => (
+                                  <td key={sub} style={{ textAlign: 'center', color: 'var(--color-primary)' }}>✓</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   ) : (
-                    <table className="data-table" style={{ margin: 0, borderTop: 'none', width: '100%' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ backgroundColor: 'white' }}>Subject</th>
-                          <th style={{ backgroundColor: 'white' }}>Teacher</th>
-                          <th style={{ backgroundColor: 'white' }}>Time</th>
-                          <th style={{ backgroundColor: 'white' }}>Days</th>
-                        </tr>
-                      </thead>
+                    <div className="table-container">
+                      <table className="data-table" style={{ margin: 0, borderTop: 'none', width: '100%' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ backgroundColor: 'white' }}>Subject</th>
+                            <th style={{ backgroundColor: 'white' }}>Teacher</th>
+                            <th style={{ backgroundColor: 'white' }}>Time</th>
+                            <th style={{ backgroundColor: 'white' }}>Days</th>
+                          </tr>
+                        </thead>
                       <tbody>
                         {(() => {
                           // Compress entries by Subject + Teacher + Time
@@ -1082,6 +1085,7 @@ export const AdminTimetable: React.FC = () => {
                         })()}
                       </tbody>
                     </table>
+                  </div>
                   )}
                 </div>
               );
