@@ -1797,7 +1797,6 @@ export const FeeManagement: React.FC = () => {
                   <thead style={{ background: '#f1f5f9' }}>
                     <tr>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Pending Month</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Paid Dues</th>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Remaining Dues</th>
                     </tr>
                   </thead>
@@ -1810,7 +1809,6 @@ export const FeeManagement: React.FC = () => {
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#16a34a', fontWeight: 600, textAlign: 'right' }}>{paidAmount.toLocaleString()}</td>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#dc2626', fontWeight: 600, textAlign: 'right' }}>{remaining.toLocaleString()}</td>
                         </tr>
                       );
@@ -1819,9 +1817,6 @@ export const FeeManagement: React.FC = () => {
                   <tfoot style={{ background: '#fdf2f2' }}>
                     <tr>
                       <td style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #fecaca' }}>Total</td>
-                      <td style={{ padding: '16px', fontSize: '16px', color: '#15803d', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #fecaca' }}>
-                        {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + (parseFloat(pv.paid_amount) || 0), 0).toLocaleString()}
-                      </td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#b91c1c', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #fecaca' }}>
                         {selectedStudentForRemainings.pendingVouchers.reduce((sum: number, pv: any) => sum + ((parseFloat(pv.total_amount) || 0) - (parseFloat(pv.paid_amount) || 0)), 0).toLocaleString()}
                       </td>
@@ -1858,23 +1853,20 @@ export const FeeManagement: React.FC = () => {
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Billing Month</th>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Payment Date</th>
                       <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Amount Paid</th>
-                      <th style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Remaining Dues</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedStudentForPaid.paidVouchers.map((v: any) => {
+                    {[...selectedStudentForPaid.paidVouchers, ...selectedStudentForPaid.pendingVouchers].filter(v => parseFloat(v.paid_amount) > 0).map((v: any) => {
                       const dateObj = new Date(v.billing_month + '-01');
                       const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                       const paidDateObj = v.paid_date ? new Date(v.paid_date) : null;
                       const paidDateStr = paidDateObj ? paidDateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
-                      const remaining = (parseFloat(v.total_amount) || 0) - (parseFloat(v.paid_amount) || 0);
                       
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{monthYear}</td>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#64748b' }}>{paidDateStr}</td>
                           <td style={{ padding: '12px 16px', fontSize: '14px', color: '#16a34a', fontWeight: 600, textAlign: 'right' }}>{(v.paid_amount || 0).toLocaleString()}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#dc2626', fontWeight: 600, textAlign: 'right' }}>{remaining.toLocaleString()}</td>
                         </tr>
                       );
                     })}
@@ -1883,10 +1875,7 @@ export const FeeManagement: React.FC = () => {
                     <tr>
                       <td colSpan={2} style={{ padding: '16px', fontSize: '15px', color: '#1e293b', fontWeight: 700, borderTop: '2px solid #bbf7d0' }}>Total</td>
                       <td style={{ padding: '16px', fontSize: '16px', color: '#15803d', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bbf7d0' }}>
-                        {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + (parseFloat(pv.paid_amount) || 0), 0).toLocaleString()}
-                      </td>
-                      <td style={{ padding: '16px', fontSize: '16px', color: '#b91c1c', fontWeight: 800, textAlign: 'right', borderTop: '2px solid #bbf7d0' }}>
-                        {selectedStudentForPaid.paidVouchers.reduce((sum: number, pv: any) => sum + ((parseFloat(pv.total_amount) || 0) - (parseFloat(pv.paid_amount) || 0)), 0).toLocaleString()}
+                        {[...selectedStudentForPaid.paidVouchers, ...selectedStudentForPaid.pendingVouchers].filter(v => parseFloat(v.paid_amount) > 0).reduce((sum: number, pv: any) => sum + (parseFloat(pv.paid_amount) || 0), 0).toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>

@@ -115,12 +115,18 @@ export const Dashboard: React.FC = () => {
       const { data: actData } = await db
         .from('admin_activities')
         .select('*')
-        // Basic date filter ignoring timezone complexity for simplicity
-        .gte('created_at', `${activitiesDate}T00:00:00.000Z`)
-        .lte('created_at', `${activitiesDate}T23:59:59.999Z`)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(200);
+
       if (actData) {
-        setAdminActivities(actData);
+        const filteredActivities = actData.filter((a: any) => {
+          // Compare using local timezone
+          const dateStr = new Date(a.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+          // en-CA formats as YYYY-MM-DD
+          const formatted = dateStr.replace(/\//g, '-');
+          return formatted === activitiesDate;
+        });
+        setAdminActivities(filteredActivities);
       } else {
         setAdminActivities([]);
       }
@@ -262,72 +268,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Secondary Stats ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>⚠️</div>
-          <div>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#dc2626' }}>{fmt(pendingFees)}</div>
-            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 500 }}>Pending Fee Vouchers</div>
-          </div>
-        </div>
-        <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>👩‍🏫</div>
-          <div>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#16a34a' }}>{fmt(totalTeachers)}</div>
-            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 500 }}>Total Teachers</div>
-          </div>
-        </div>
-        <div
-          className="card"
-          style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}
-          onClick={() => router.push('/students/struck-off')}
-        >
-          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🚫</div>
-          <div>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#ea580c' }}>{fmt(struckOffStudents)}</div>
-            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 500 }}>Struck-Off Students</div>
-          </div>
-        </div>
-      </div>
 
-      {/* ── Bottom Section ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-        <div className="card">
-          <h2 className="card-heading">Quick Actions</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {[
-              { label: '➕ Register Student', path: '/students/register', color: '#6366f1' },
-              { label: '➕ Register Staff', path: '/staff/register', color: '#0ea5e9' },
-              { label: '💰 Manage Fees', path: '/students/fees', color: '#f59e0b' },
-              { label: '📋 Student Records', path: '/students/records', color: '#22c55e' },
-              { label: '📊 Academics', path: '/academics/schedule', color: '#8b5cf6' },
-              { label: '⚙️ Settings', path: '/settings', color: '#64748b' },
-            ].map(action => (
-              <button
-                key={action.path}
-                onClick={() => router.push(action.path)}
-                style={{
-                  padding: '14px 16px',
-                  background: 'var(--color-bg-secondary)',
-                  border: `1px solid var(--color-border)`,
-                  borderLeft: `4px solid ${action.color}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: 'var(--color-text-main)',
-                  transition: 'all 0.2s',
-                }}
-                onMouseOver={e => { e.currentTarget.style.background = action.color + '12'; }}
-                onMouseOut={e => { e.currentTarget.style.background = 'var(--color-bg-secondary)'; }}
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {missingReports.length > 0 && (
@@ -431,7 +372,7 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
         </div>
-      </div>
+
 
       <style>{`
         @keyframes pulse {
