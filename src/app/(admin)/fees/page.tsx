@@ -1355,7 +1355,7 @@ export const FeeManagement: React.FC = () => {
                 </button>
             </div>
             
-            <div className="table-container" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+            <div className="table-container" style={{ maxHeight: '500px' }}>
               <table className="data-table">
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr>
@@ -1450,7 +1450,7 @@ export const FeeManagement: React.FC = () => {
               
               {/* Body */}
               <div style={{ padding: '24px', background: '#f8fafc' }}>
-                <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
+                <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead style={{ background: '#f1f5f9' }}>
                       <tr>
@@ -1792,7 +1792,7 @@ export const FeeManagement: React.FC = () => {
             </div>
             
             <div style={{ padding: '24px', background: '#f8fafc' }}>
-              <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
+              <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead style={{ background: '#f1f5f9' }}>
                     <tr>
@@ -1846,7 +1846,7 @@ export const FeeManagement: React.FC = () => {
             </div>
             
             <div style={{ padding: '24px', background: '#f8fafc' }}>
-              <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
+              <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead style={{ background: '#f1f5f9' }}>
                     <tr>

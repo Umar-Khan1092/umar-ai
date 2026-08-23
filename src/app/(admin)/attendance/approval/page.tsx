@@ -267,7 +267,7 @@ export const AdminAttendanceApproval: React.FC = () => {
   void _getStatusColor;
 
   return (
-    <div className="page-content">
+    <div className="page-content fill-vertical-space">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '24px', color: 'var(--color-primary)', margin: '0 0 8px 0' }}>Attendance Approval</h1>

@@ -193,11 +193,11 @@ export const StudentRecords: React.FC = () => {
   )).sort();
 
   return (
-    <div className="records-page" style={{ position: 'relative' }}>
+    <div className="records-page fill-vertical-space" style={{ position: 'relative' }}>
       
       {/* ── CLASS GROUPS VIEW ── */}
       {!selectedClassGroup && (
-        <div className="student-classes-page" style={{ padding: '0 0 24px 0' }}>
+        <div className="student-classes-page fill-vertical-space" style={{ padding: '0 0 24px 0' }}>
           <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <h2 style={{ fontSize: '1.5rem', color: 'var(--color-text-main)', margin: '0 0 8px 0' }}>Classes & Sections</h2>

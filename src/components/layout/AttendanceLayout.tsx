@@ -15,7 +15,7 @@ const attendanceNavItems = [
 export const AttendanceLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname() ?? '';
   return (
-    <div className="student-layout">
+    <div className="student-layout fill-vertical-space">
       <div style={{ marginBottom: '8px', padding: '4px 0' }}>
         <nav className="nav-tabs-mobile" style={{ display: 'flex', alignItems: 'center', gap: '2px', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {attendanceNavItems.map(item => {

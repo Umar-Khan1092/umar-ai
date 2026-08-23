@@ -118,7 +118,7 @@ export const StaffRecords: React.FC = () => {
   };
 
   return (
-    <div className="records-page">
+    <div className="records-page fill-vertical-space">
       <div className="records-controls">
         <div className="search-box">
           <Search size={18} className="search-icon" />

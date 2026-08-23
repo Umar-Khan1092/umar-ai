@@ -26,6 +26,7 @@ export const Dashboard: React.FC = () => {
   const [activitiesDate, setActivitiesDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [adminActivities, setAdminActivities] = useState<any[]>([]);
   const [missingReports, setMissingReports] = useState<any[]>([]);
+  const [activityFilter, setActivityFilter] = useState<string>('All');
 
   // Loading state
   const [loading, setLoading] = useState(true);
@@ -199,6 +200,47 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const [messageTitle, setMessageTitle] = useState('');
+  const [messageContent, setMessageContent] = useState('');
+  const [messageRole, setMessageRole] = useState('All');
+  const [sendingMsg, setSendingMsg] = useState(false);
+
+  const handleSendMessage = async () => {
+    if (!messageTitle.trim() || !messageContent.trim()) return alert('Title and Content are required.');
+    setSendingMsg(true);
+    try {
+      const db = adminSupabase || supabase;
+      const { error } = await db.from('notifications').insert({
+        title: messageTitle,
+        message: messageContent,
+        target_role: messageRole === 'All' ? null : messageRole,
+        is_read: false
+      });
+      if (error) throw error;
+      
+      try {
+        const authData = await supabase.auth.getSession();
+        if (authData.data.session?.access_token) {
+          await fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authData.data.session.access_token}` },
+            body: JSON.stringify({ userIds: ['all'], title: messageTitle, message: messageContent, url: '/notifications', category: 'General' })
+          });
+        }
+      } catch (e) {
+        console.error('Push notification failed', e);
+      }
+      
+      alert('Message sent successfully!');
+      setMessageTitle('');
+      setMessageContent('');
+    } catch (err: any) {
+      alert('Failed to send message: ' + err.message);
+    } finally {
+      setSendingMsg(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     const interval = setInterval(fetchDashboardData, 15000);
@@ -215,11 +257,6 @@ export const Dashboard: React.FC = () => {
             Dashboard
             <NotificationButton />
           </h1>
-          <p className="caption">Live overview of school operations and daily metrics.</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--color-text-muted)', paddingTop: '8px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse 2s infinite' }} />
-          Live — refreshes every 15s
         </div>
       </div>
 
@@ -301,16 +338,37 @@ export const Dashboard: React.FC = () => {
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 className="card-heading" style={{ margin: 0 }}>Today Activities</h2>
-            <input 
-              type="date" 
-              value={activitiesDate}
-              onChange={(e) => setActivitiesDate(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
-            />
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <select 
+                value={activityFilter}
+                onChange={(e) => setActivityFilter(e.target.value)}
+                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
+              >
+                <option value="All">All</option>
+                <option value="Fee">Fee</option>
+                <option value="Teacher Reports">Teacher Reports</option>
+                <option value="Notices">Notices</option>
+              </select>
+              <input 
+                type="date" 
+                value={activitiesDate}
+                onChange={(e) => setActivitiesDate(e.target.value)}
+                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
+              />
+            </div>
           </div>
-          {adminActivities.length > 0 ? (
-            <div className="teacher-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
-              {adminActivities.map((act) => {
+          {(() => {
+            const filteredActivities = adminActivities.filter(act => {
+              if (activityFilter === 'All') return true;
+              if (activityFilter === 'Fee' && act.activity_type?.includes('Fee')) return true;
+              if (activityFilter === 'Teacher Reports' && act.activity_type?.includes('Report')) return true;
+              if (activityFilter === 'Notices' && act.activity_type?.includes('Notice')) return true;
+              return false;
+            });
+
+            return filteredActivities.length > 0 ? (
+            <div className="reports-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+              {filteredActivities.map((act) => {
                 let cardColor = 'var(--color-primary)';
                 if (act.activity_type?.includes('Fee')) cardColor = '#eab308';
                 if (act.activity_type?.includes('Attendance')) cardColor = '#22c55e';
@@ -369,8 +427,49 @@ export const Dashboard: React.FC = () => {
             <div className="empty-state-placeholder" style={{ padding: '24px 16px' }}>
               <p className="body-text" style={{ fontSize: '13px' }}>No activities recorded for this date.</p>
             </div>
-          )}
+          );
+          })()}
         </div>
+        </div>
+
+        <div className="card" style={{ marginTop: '24px' }}>
+          <h2 className="card-heading" style={{ margin: '0 0 16px 0' }}>Send New Message</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+              <input 
+                type="text" 
+                placeholder="Message Title" 
+                className="input-field" 
+                value={messageTitle}
+                onChange={(e) => setMessageTitle(e.target.value)}
+              />
+              <select 
+                className="input-field"
+                value={messageRole}
+                onChange={(e) => setMessageRole(e.target.value)}
+              >
+                <option value="All">All Roles</option>
+                <option value="Teacher">Teachers</option>
+                <option value="Student">Students</option>
+                <option value="Guardian">Guardians</option>
+              </select>
+            </div>
+            <textarea 
+              placeholder="Message Content" 
+              className="input-field" 
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
+            />
+            <button 
+              className="btn-primary" 
+              style={{ alignSelf: 'flex-start', padding: '8px 24px' }}
+              onClick={handleSendMessage}
+              disabled={sendingMsg}
+            >
+              {sendingMsg ? 'Sending...' : 'Send Message'}
+            </button>
+          </div>
         </div>
 
 

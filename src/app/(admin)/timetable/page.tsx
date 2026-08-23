@@ -352,8 +352,8 @@ export const AdminTimetable: React.FC = () => {
   };
 
   return (
-    <div className="page-content">
-      <div style={{ marginBottom: 'var(--space-4)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div className="records-page fill-vertical-space">
+      <div className="records-controls" style={{ marginBottom: '24px' }}>
         <div>
           <h1 className="section-heading" style={{ marginBottom: '4px' }}>Timetable Scheduler</h1>
           <p className="subtitle">Manage weekly schedules or view the global time table.</p>
@@ -384,9 +384,9 @@ export const AdminTimetable: React.FC = () => {
           )}
 
           {/* Main Workspace */}
-          <div style={{ display: 'grid', gridTemplateColumns: '450px 1fr', gap: '24px', alignItems: 'start' }}>
+          <div className="admin-split-layout">
             {/* Add Period Form */}
-            <div className="card" style={{ height: 'fit-content', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
+            <div className="card admin-split-left" style={{ height: 'fit-content', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
               <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Plus size={18} color="var(--color-primary)" /> Bulk Scheduler
               </h3>
@@ -725,7 +725,7 @@ export const AdminTimetable: React.FC = () => {
             </div>
           
           {/* Weekly Grid Preview */}
-          <div className="card" style={{ maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
+          <div className="card admin-split-right" style={{ maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px', position: 'sticky', top: 0, backgroundColor: 'var(--color-surface)', zIndex: 10, paddingBottom: '8px' }}>
               <Calendar size={18} color="var(--color-primary)" /> Preview: {selectedClasses[0] || 'Class'} - {selectedSections[0] || 'Section'}
             </h3>

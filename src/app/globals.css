@@ -108,7 +108,26 @@ html {
 .page-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--space-3) var(--space-3);
+}
+
+.fill-vertical-space {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Base constraints to prevent flex children from forcing parent to expand horizontally */
+.student-layout,
+.records-page,
+.admin-split-layout,
+.admin-split-left,
+.admin-split-right,
+.fill-vertical-space {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Typography Classes */
@@ -226,6 +245,8 @@ input[type="file"]::file-selector-button:hover {
   scrollbar-width: none;
   padding: 4px 6px;
   gap: 2px;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .profile-nav-horizontal::-webkit-scrollbar {
@@ -525,6 +546,8 @@ input[type="file"]::file-selector-button:hover {
   }
   .page-content {
     padding: var(--space-2);
+    overflow-x: hidden;
+    width: 100%;
   }
 
   /* Professional Horizontal Scrolling for Filters & Controls */
@@ -533,6 +556,7 @@ input[type="file"]::file-selector-button:hover {
     align-items: center !important;
     flex-wrap: nowrap !important;
     width: 100%;
+    max-width: 100%;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;

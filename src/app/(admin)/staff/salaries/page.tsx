@@ -141,7 +141,7 @@ export const StaffSalaries: React.FC = () => {
   });
 
   return (
-    <div className="fee-management-page page-content">
+    <div className="fee-management-page fill-vertical-space">
       <div className="records-controls" style={{ marginBottom: 'var(--space-4)' }}>
         <div className="header-left">
           <h1 className="section-heading" style={{ marginBottom: 0 }}>Staff Salaries Ledger</h1>
