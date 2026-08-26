@@ -1,18 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, CheckCircle, Clock } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export const AdminAttendanceApproval: React.FC = () => {
   const [attendances, setAttendances] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [searchTerm] = useState('');
   const [statusMsg, setStatusMsg] = useState<{type: 'success'|'error'|null, message: string}>({type: null, message: ''});
   
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [editedRecords, setEditedRecords] = useState<any[]>([]);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   // New states for tracking and filters
   const [settings, setSettings] = useState<any>(null);
@@ -59,10 +61,41 @@ export const AdminAttendanceApproval: React.FC = () => {
       
       const { data: staffData } = await supabase.from('staff').select('id, name');
       
-      const enriched = (attData || []).map((a: any) => ({
+      const { data: pubData } = await supabase.from('settings').select('key').like('key', 'att_published_%');
+      const pubKeys = new Set((pubData || []).map(r => r.key));
+      
+      const grouped: { [key: string]: any } = {};
+      (attData || []).forEach((row: any) => {
+        const key = `${row.date}_${row.academic_class}_${row.section}`;
+        if (!grouped[key]) {
+          grouped[key] = {
+            id: key,
+            date: row.date,
+            class_name: row.academic_class,
+            section: row.section,
+            status: 'Draft',
+            teacher_id: row.teacher_id,
+            records: []
+          };
+        }
+        if (row.is_locked) {
+          grouped[key].status = 'Submitted';
+        }
+        if (pubKeys.has(`att_published_${row.date}_${row.academic_class}_${row.section}`)) {
+          grouped[key].status = 'Published';
+        }
+        grouped[key].records.push({
+          id: row.id,
+          student_id: row.student_id,
+          status: row.status
+        });
+      });
+
+      const enriched = Object.values(grouped).map((a: any) => ({
         ...a,
-        teacher_name: (staffData || []).find((s: any) => s.id === a.teacher_id)?.name || 'Unknown'
+        teacher_name: (staffData || []).find((s: any) => s.id?.toString() === a.teacher_id?.toString())?.name || 'Unknown'
       }));
+      enriched.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setAttendances(enriched);
       setIsLoading(false);
     } catch(err) {
@@ -80,7 +113,7 @@ export const AdminAttendanceApproval: React.FC = () => {
       if (studentIds.length > 0) {
         const { data: studentsData } = await supabase
           .from('students')
-          .select('id, name, father_name, roll_number')
+          .select('id, name, father_name, roll_number, guardian_id')
           .in('id', studentIds);
           
         if (studentsData && studentsData.length > 0) {
@@ -90,7 +123,8 @@ export const AdminAttendanceApproval: React.FC = () => {
               ...r,
               student_name: r.student_name || student?.name || 'N/A',
               father_name: r.father_name || student?.father_name || 'N/A',
-              roll_number: r.roll_number || student?.roll_number || 'N/A'
+              roll_number: r.roll_number || student?.roll_number || 'N/A',
+              guardian_id: student?.guardian_id || null
             };
           });
           setEditedRecords(enriched);
@@ -109,21 +143,49 @@ export const AdminAttendanceApproval: React.FC = () => {
   const saveEditsAndPublish = async () => {
     setIsActionLoading(true);
     try {
-      const { error } = await supabase.from('student_attendance').update({
-        records: editedRecords,
-        status: 'Published'
-      }).eq('id', selectedRecord.id);
+      for (const r of editedRecords) {
+        if (r.id) {
+          const { error } = await supabase.from('student_attendance').update({
+            status: r.status,
+            is_locked: true
+          }).eq('id', r.id);
+          if (error) throw error;
+        }
+      }
       
-      if (error) throw error;
+      // Mark as published in settings
+      await supabase.from('settings').upsert({
+        key: `att_published_${selectedRecord.date}_${selectedRecord.class_name}_${selectedRecord.section}`,
+        value: { publishedAt: new Date().toISOString() }
+      }, { onConflict: 'key' });
       
       // Auto-notify parents (Task 2 flow)
       try {
         const token = (await supabase.auth.getSession()).data.session?.access_token;
         const dateFormatted = new Date(selectedRecord.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         
-        await Promise.all((editedRecords || []).map(async (r: any) => {
-          const title = `📅 Attendance Recorded: ${r.status}`;
-          const message = `Dear Parent, your child ${r.student_name || 'Student'} (${selectedRecord.class_name} - ${selectedRecord.section}) was marked ${r.status} on ${dateFormatted}.${r.status === 'Absent' && r.fine ? ` An absentee fine of Rs. ${r.fine} has been applied.` : ''}`;
+        // Group by guardian_id + status + fine
+        const groupedNotifications: { [key: string]: any } = {};
+        
+        (editedRecords || []).forEach((r: any) => {
+          const key = r.guardian_id ? `${r.guardian_id}_${r.status}_${r.fine || 0}` : `student_${r.student_id}`;
+          if (!groupedNotifications[key]) {
+            groupedNotifications[key] = {
+              userIds: ['parent_' + r.student_id], // Will target guardian_id via push API
+              names: [r.student_name || 'Student'],
+              status: r.status,
+              fine: r.fine || 0
+            };
+          } else {
+            groupedNotifications[key].names.push(r.student_name || 'Student');
+            groupedNotifications[key].userIds.push('parent_' + r.student_id);
+          }
+        });
+
+        await Promise.all(Object.values(groupedNotifications).map(async (group: any) => {
+          const title = `📅 Attendance Recorded: ${group.status}`;
+          const namesStr = group.names.join(' & ');
+          const message = `Dear Parent, your ${group.names.length > 1 ? 'children' : 'child'} ${namesStr} (${selectedRecord.class_name} - ${selectedRecord.section}) ${group.names.length > 1 ? 'were' : 'was'} marked ${group.status} on ${dateFormatted}.${group.status === 'Absent' && group.fine ? ` An absentee fine of Rs. ${group.fine} has been applied.` : ''}`;
           
           await fetch('/api/push/send', {
             method: 'POST',
@@ -132,7 +194,7 @@ export const AdminAttendanceApproval: React.FC = () => {
               'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-              userIds: ['parent_' + r.student_id],
+              userIds: group.userIds,
               title,
               message,
               category: 'Attendance',
@@ -151,15 +213,24 @@ export const AdminAttendanceApproval: React.FC = () => {
     } catch(err: any) {
       setStatusMsg({type: 'error', message: err.message});
     } finally {
-      setIsActionLoading(false);
+      setPublishing(false);
     }
   };
   
   const rejectToDraft = async () => {
-    setIsActionLoading(true);
+    setRejecting(true);
     try {
-      const { error } = await supabase.from('student_attendance').update({ status: 'Draft' }).eq('id', selectedRecord.id);
-      if (error) throw error;
+      if (selectedRecord && selectedRecord.records) {
+        for (const r of selectedRecord.records) {
+          if (r.id) {
+            const { error } = await supabase.from('student_attendance').update({ is_locked: false }).eq('id', r.id);
+            if (error) throw error;
+          }
+        }
+        
+        // Remove published marker if it exists
+        await supabase.from('settings').delete().eq('key', `att_published_${selectedRecord.date}_${selectedRecord.class_name}_${selectedRecord.section}`);
+      }
       setStatusMsg({type: 'success', message: 'Attendance rejected back to Teacher.'});
       setTimeout(() => setStatusMsg({type: null, message: ''}), 3000);
       setSelectedRecord(null);
@@ -201,7 +272,7 @@ export const AdminAttendanceApproval: React.FC = () => {
             incharge_id = settings.class_incharges[`${c}-${s}`];
           }
 
-          const teacher_name = teachers.find(t => t.id === incharge_id)?.name || 'Unassigned';
+          const teacher_name = teachers.find(t => t.id?.toString() === incharge_id?.toString())?.name || 'Unassigned';
           allCombos.push({ class_name: c, section: s, incharge_id, teacher_name });
         });
       });
@@ -227,7 +298,7 @@ export const AdminAttendanceApproval: React.FC = () => {
         ...combo,
         attendance_record: submission || null,
         status: submission ? submission.status : 'Pending',
-        teacher_name: submission ? submission.teacher_name : combo.teacher_name
+        teacher_name: (submission && submission.teacher_name !== 'Unknown') ? submission.teacher_name : combo.teacher_name
       };
 
       if (!submission) {
@@ -247,16 +318,28 @@ export const AdminAttendanceApproval: React.FC = () => {
 
     // Sort pending list by Class Name
     pendingList.sort((a, b) => a.class_name.localeCompare(b.class_name));
+    
+    const allList = [...pendingList, ...submittedList];
 
-    return { 
+    return {
+      allList,
+      allCount: allList.length,
       pendingList,
-      submittedList,
       pendingCount: pendingList.length,
+      submittedList,
       submittedCount: submittedList.length
     };
-  }, [settings, attSettings, teachers, attendances, filters.date, searchTerm, filters.class_name, filters.section]);
+  }, [attendances, teachers, settings, attSettings, searchTerm, filters]);
 
-  const [activeTab, setActiveTab] = useState<'Pending' | 'Submitted'>('Pending');
+  const handleTabSwitch = (tab: 'All' | 'Pending' | 'Completed') => {
+    if (tab === activeTab) return;
+    setIsTabSwitching(true);
+    setActiveTab(tab);
+    setTimeout(() => setIsTabSwitching(false), 400); // Give enough time for the dotted spinner to show
+  };
+
+  const [activeTab, setActiveTab] = useState<'All' | 'Pending' | 'Completed'>('All');
+  const [isTabSwitching, setIsTabSwitching] = useState(false);
 
   const _getStatusColor = (status: string) => {
     if (status === 'Pending') return { border: '#F59E0B', bg: '#FEF3C7', text: '#D97706' };
@@ -330,14 +413,30 @@ export const AdminAttendanceApproval: React.FC = () => {
         <div style={{ flex: 1, display: 'flex' }}>
           <div 
             className="card hover-effect" 
-            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '16px', borderLeft: activeTab === 'Pending' ? '4px solid #F59E0B' : '4px solid transparent', cursor: 'pointer', backgroundColor: activeTab === 'Pending' ? '#F8FAFC' : 'white', boxShadow: activeTab === 'Pending' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : '' }}
-            onClick={() => setActiveTab('Pending')}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '16px', borderLeft: activeTab === 'All' ? '4px solid #3B82F6' : '4px solid transparent', cursor: 'pointer', backgroundColor: activeTab === 'All' ? '#F0F9FF' : 'white', boxShadow: activeTab === 'All' ? '0 10px 15px -3px rgba(59, 130, 246, 0.1)' : '0 1px 3px rgba(0,0,0,0.1)', transition: 'all 0.3s ease' }}
+            onClick={() => handleTabSwitch('All')}
+          >
+            <div style={{ backgroundColor: '#DBEAFE', padding: '16px', borderRadius: '50%' }}>
+              <Users size={24} color="#2563EB" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '4px', fontWeight: 500 }}>All Classes</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--color-text-primary)' }}>{combos.allCount}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, display: 'flex' }}>
+          <div 
+            className="card hover-effect" 
+            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '16px', borderLeft: activeTab === 'Pending' ? '4px solid #F59E0B' : '4px solid transparent', cursor: 'pointer', backgroundColor: activeTab === 'Pending' ? '#FFFBEB' : 'white', boxShadow: activeTab === 'Pending' ? '0 10px 15px -3px rgba(245, 158, 11, 0.1)' : '0 1px 3px rgba(0,0,0,0.1)', transition: 'all 0.3s ease' }}
+            onClick={() => handleTabSwitch('Pending')}
           >
             <div style={{ backgroundColor: '#FEF3C7', padding: '16px', borderRadius: '50%' }}>
               <Clock size={24} color="#D97706" />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '4px' }}>Pending Attendance</div>
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '4px', fontWeight: 500 }}>Pending</div>
               <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--color-text-primary)' }}>{combos.pendingCount}</div>
             </div>
           </div>
@@ -346,14 +445,14 @@ export const AdminAttendanceApproval: React.FC = () => {
         <div style={{ flex: 1, display: 'flex' }}>
           <div 
             className="card hover-effect" 
-            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '16px', borderLeft: activeTab === 'Submitted' ? '4px solid #10B981' : '4px solid transparent', cursor: 'pointer', backgroundColor: activeTab === 'Submitted' ? '#F8FAFC' : 'white', boxShadow: activeTab === 'Submitted' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : '' }}
-            onClick={() => setActiveTab('Submitted')}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '16px', borderLeft: activeTab === 'Completed' ? '4px solid #10B981' : '4px solid transparent', cursor: 'pointer', backgroundColor: activeTab === 'Completed' ? '#F0FDF4' : 'white', boxShadow: activeTab === 'Completed' ? '0 10px 15px -3px rgba(16, 185, 129, 0.1)' : '0 1px 3px rgba(0,0,0,0.1)', transition: 'all 0.3s ease' }}
+            onClick={() => handleTabSwitch('Completed')}
           >
             <div style={{ backgroundColor: '#D1FAE5', padding: '16px', borderRadius: '50%' }}>
               <CheckCircle size={24} color="#059669" />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '4px' }}>Submitted Attendance</div>
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '4px', fontWeight: 500 }}>Completed</div>
               <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--color-text-primary)' }}>{combos.submittedCount}</div>
             </div>
           </div>
@@ -361,35 +460,52 @@ export const AdminAttendanceApproval: React.FC = () => {
       </div>
 
       <div className="admin-split-layout">
-        <div className="admin-split-left">
-          {/* SEARCH BAR WAS REMOVED FROM HERE */}
-
+        <div className="admin-split-left" style={{ display: 'flex', flexDirection: 'column' }}>
           {isLoading ? (
-            <div className="card">Loading attendance...</div>
+            <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+              <div className="dotted-spinner">
+                <div className="dot"></div>
+                <div className="dot"></div>
+                <div className="dot"></div>
+              </div>
+            </div>
+          ) : isTabSwitching ? (
+            <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: '40px', flex: 1 }}>
+              <div className="dotted-spinner">
+                <div className="dot"></div>
+                <div className="dot"></div>
+                <div className="dot"></div>
+              </div>
+            </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
               
               {/* PENDING VIEW */}
               {activeTab === 'Pending' && combos.pendingList.length === 0 && (
-                <div className="empty-state card">No pending attendance records.</div>
+                <div className="empty-state card" style={{ padding: '40px', textAlign: 'center', color: 'var(--color-text-muted)' }}>No pending attendance records.</div>
               )}
               {activeTab === 'Pending' && combos.pendingList.length > 0 && (
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <div style={{ maxHeight: '400px', overflowY: 'auto', overflowX: 'hidden' }}>
-                    <table className="data-table" style={{ margin: 0, width: '100%', fontSize: '13px', tableLayout: 'fixed', wordWrap: 'break-word' }}>
-                      <thead>
+                <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                  <div style={{ maxHeight: '450px', overflowY: 'auto', overflowX: 'hidden' }}>
+                    <table className="data-table" style={{ margin: 0, width: '100%', fontSize: '13.5px', tableLayout: 'fixed', wordWrap: 'break-word' }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#F9FAFB' }}>
                         <tr>
-                          <th style={{ padding: '8px 12px', width: '45%' }}>Incharge</th>
-                          <th style={{ padding: '8px 12px', width: '30%' }}>Class</th>
-                          <th style={{ padding: '8px 12px', width: '25%' }}>Section</th>
+                          <th style={{ padding: '12px 16px', width: '45%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB' }}>Incharge</th>
+                          <th style={{ padding: '12px 16px', width: '30%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB' }}>Class</th>
+                          <th style={{ padding: '12px 16px', width: '25%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB' }}>Section</th>
                         </tr>
                       </thead>
                       <tbody>
                         {combos.pendingList.map((r: any, idx: number) => (
-                          <tr key={idx}>
-                            <td style={{ padding: '8px 12px' }}>{r.teacher_name}</td>
-                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>{r.class_name}</td>
-                            <td style={{ padding: '8px 12px' }}>{r.section}</td>
+                          <tr key={idx} className="table-row-hover" style={{ transition: 'background-color 0.2s ease', borderBottom: '1px solid #F3F4F6' }}>
+                            <td style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#E0E7FF', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                                {r.teacher_name.charAt(0)}
+                              </div>
+                              <span style={{ fontWeight: 500, color: '#111827' }}>{r.teacher_name}</span>
+                            </td>
+                            <td style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>{r.class_name}</td>
+                            <td style={{ padding: '12px 16px', color: '#4B5563' }}>{r.section}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -398,20 +514,20 @@ export const AdminAttendanceApproval: React.FC = () => {
                 </div>
               )}
 
-              {/* SUBMITTED VIEW */}
-              {activeTab === 'Submitted' && combos.submittedList.length === 0 && (
-                <div className="empty-state card">No submitted attendance records.</div>
+              {/* COMPLETED VIEW */}
+              {activeTab === 'Completed' && combos.submittedList.length === 0 && (
+                <div className="empty-state card" style={{ padding: '40px', textAlign: 'center', color: 'var(--color-text-muted)' }}>No completed attendance records.</div>
               )}
-              {activeTab === 'Submitted' && combos.submittedList.length > 0 && (
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <div style={{ maxHeight: '400px', overflowY: 'auto', overflowX: 'hidden' }}>
-                    <table className="data-table" style={{ margin: 0, width: '100%', fontSize: '13px', tableLayout: 'fixed', wordWrap: 'break-word' }}>
-                      <thead>
+              {activeTab === 'Completed' && combos.submittedList.length > 0 && (
+                <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                  <div style={{ maxHeight: '450px', overflowY: 'auto', overflowX: 'hidden' }}>
+                    <table className="data-table" style={{ margin: 0, width: '100%', fontSize: '13.5px', tableLayout: 'fixed', wordWrap: 'break-word' }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#F9FAFB' }}>
                         <tr>
-                          <th style={{ padding: '8px 12px', width: '35%' }}>Incharge</th>
-                          <th style={{ padding: '8px 12px', width: '25%' }}>Class</th>
-                          <th style={{ padding: '8px 12px', width: '15%' }}>Section</th>
-                          <th style={{ padding: '8px 12px', width: '25%' }}>Action</th>
+                          <th style={{ padding: '12px 16px', width: '35%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB' }}>Incharge</th>
+                          <th style={{ padding: '12px 16px', width: '25%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB' }}>Class</th>
+                          <th style={{ padding: '12px 16px', width: '15%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB' }}>Section</th>
+                          <th style={{ padding: '12px 16px', width: '25%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB', textAlign: 'center' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -419,16 +535,70 @@ export const AdminAttendanceApproval: React.FC = () => {
                           const isSelected = selectedRecord?.id === r.attendance_record?.id;
                           
                           return (
-                            <tr key={idx} style={{ backgroundColor: isSelected ? '#F0F9FF' : 'transparent', cursor: 'pointer' }} onClick={() => { if (r.attendance_record) openRecord(r.attendance_record); }}>
-                              <td style={{ padding: '8px 12px' }}>{r.teacher_name}</td>
-                              <td style={{ padding: '8px 12px', fontWeight: 500 }}>{r.class_name}</td>
-                              <td style={{ padding: '8px 12px' }}>{r.section}</td>
-                              <td style={{ padding: '8px 12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span className={`badge ${r.status === 'Published' ? 'badge-success' : 'badge-warning'}`} style={{ cursor: 'pointer', opacity: 0.9 }}>
-                                    {r.status === 'Published' ? 'Approved' : 'Not Approved'}
-                                  </span>
+                            <tr key={idx} className="table-row-hover" style={{ backgroundColor: isSelected ? '#EFF6FF' : 'transparent', cursor: 'pointer', transition: 'background-color 0.2s ease', borderBottom: '1px solid #F3F4F6' }} onClick={() => { if (r.attendance_record) openRecord(r.attendance_record); }}>
+                              <td style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#E0E7FF', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                                  {r.teacher_name.charAt(0)}
                                 </div>
+                                <span style={{ fontWeight: 500, color: '#111827' }}>{r.teacher_name}</span>
+                              </td>
+                              <td style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>{r.class_name}</td>
+                              <td style={{ padding: '12px 16px', color: '#4B5563' }}>{r.section}</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                <span className={`badge ${r.status === 'Published' ? 'badge-success' : 'badge-warning'}`} style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                  {r.status === 'Published' ? 'Approved' : 'Review'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* ALL VIEW */}
+              {activeTab === 'All' && combos.allList.length === 0 && (
+                <div className="empty-state card" style={{ padding: '40px', textAlign: 'center', color: 'var(--color-text-muted)' }}>No attendance records found.</div>
+              )}
+              {activeTab === 'All' && combos.allList.length > 0 && (
+                <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                  <div style={{ maxHeight: '450px', overflowY: 'auto', overflowX: 'hidden' }}>
+                    <table className="data-table" style={{ margin: 0, width: '100%', fontSize: '13.5px', tableLayout: 'fixed', wordWrap: 'break-word' }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#F9FAFB' }}>
+                        <tr>
+                          <th style={{ padding: '12px 16px', width: '35%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB' }}>Incharge</th>
+                          <th style={{ padding: '12px 16px', width: '25%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB' }}>Class</th>
+                          <th style={{ padding: '12px 16px', width: '15%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB' }}>Section</th>
+                          <th style={{ padding: '12px 16px', width: '25%', color: '#6B7280', fontWeight: 600, borderBottom: '1px solid #E5E7EB', textAlign: 'center' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {combos.allList.map((r: any, idx: number) => {
+                          const isSelected = selectedRecord?.id === r.attendance_record?.id;
+                          const isPending = !r.attendance_record;
+                          
+                          return (
+                            <tr key={idx} className="table-row-hover" style={{ backgroundColor: isSelected ? '#EFF6FF' : 'transparent', cursor: isPending ? 'default' : 'pointer', transition: 'background-color 0.2s ease', borderBottom: '1px solid #F3F4F6' }} onClick={() => { if (r.attendance_record) openRecord(r.attendance_record); }}>
+                              <td style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#E0E7FF', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                                  {r.teacher_name.charAt(0)}
+                                </div>
+                                <span style={{ fontWeight: 500, color: '#111827' }}>{r.teacher_name}</span>
+                              </td>
+                              <td style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>{r.class_name}</td>
+                              <td style={{ padding: '12px 16px', color: '#4B5563' }}>{r.section}</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                {isPending ? (
+                                  <span className="badge badge-error" style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', backgroundColor: '#FEF2F2', color: '#DC2626' }}>
+                                    Missing
+                                  </span>
+                                ) : (
+                                  <span className={`badge ${r.status === 'Published' ? 'badge-success' : 'badge-warning'}`} style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                    {r.status === 'Published' ? 'Approved' : 'Review'}
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           );
@@ -446,74 +616,88 @@ export const AdminAttendanceApproval: React.FC = () => {
         {/* ADMIN SPLIT RIGHT - DETAILED VIEW */}
         <div className="admin-split-right">
           {selectedRecord ? (
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)' }}>
+              <div style={{ padding: '24px', borderBottom: '1px solid #E5E7EB', background: 'linear-gradient(to right, #F8FAFC, #FFFFFF)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>Attendance: {selectedRecord.class_name} ({selectedRecord.section})</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-                      Date: {selectedRecord.date ? `${selectedRecord.date.split('-')[2]}/${selectedRecord.date.split('-')[1]}/${selectedRecord.date.split('-')[0]}` : ''}
+                  <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '8px', background: '#DBEAFE', borderRadius: '8px' }}>
+                      <CheckCircle size={20} color="#2563EB" />
+                    </div>
+                    Attendance: {selectedRecord.class_name} ({selectedRecord.section})
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', paddingLeft: '46px' }}>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Clock size={14} /> {selectedRecord.date ? `${selectedRecord.date.split('-')[2]}/${selectedRecord.date.split('-')[1]}/${selectedRecord.date.split('-')[0]}` : ''}
                     </p>
-                    <div style={{ display: 'flex', gap: '8px', fontSize: '13px' }}>
-                      <span style={{ color: '#059669', fontWeight: 600 }}>P: {getStats(selectedRecord).present}</span>
-                      <span style={{ color: '#DC2626', fontWeight: 600 }}>A: {getStats(selectedRecord).absent}</span>
-                      <span style={{ color: '#D97706', fontWeight: 600 }}>L: {getStats(selectedRecord).leave}</span>
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '14px', background: '#F1F5F9', padding: '4px 12px', borderRadius: '20px' }}>
+                      <span style={{ color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>P: {getStats(selectedRecord).present}</span>
+                      <span style={{ color: '#DC2626', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>A: {getStats(selectedRecord).absent}</span>
+                      <span style={{ color: '#D97706', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>L: {getStats(selectedRecord).leave}</span>
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
                   {(selectedRecord.status === 'Submitted' || selectedRecord.status === 'Draft') && (
                     <>
-                      <button className="btn-secondary" onClick={rejectToDraft} disabled={isActionLoading} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {isActionLoading ? <div className="spinner" style={{ width: '14px', height: '14px', border: '2px solid var(--color-danger)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : null}
-                        Reject (To Draft)
+                      <button className="btn-secondary" onClick={rejectToDraft} disabled={rejecting || publishing} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '10px', padding: '10px 16px', fontWeight: 600, transition: 'all 0.2s ease', background: 'transparent' }}>
+                        {rejecting ? <div className="spinner" style={{ width: '16px', height: '16px', border: '2px solid var(--color-danger)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Clock size={16} />}
+                        Reject to Draft
                       </button>
-                      <button className="btn-primary" onClick={saveEditsAndPublish} disabled={isActionLoading} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {isActionLoading ? <div className="spinner" style={{ width: '14px', height: '14px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : null}
+                      <button className="btn-primary" onClick={saveEditsAndPublish} disabled={rejecting || publishing} style={{ display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '10px', padding: '10px 20px', fontWeight: 600, transition: 'all 0.2s ease', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)' }}>
+                        {publishing ? <div className="spinner" style={{ width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={16} />}
                         Accept & Publish
                       </button>
                     </>
                   )}
                   {selectedRecord.status === 'Published' && (
-                    <span className="badge badge-success">Already Published</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#D1FAE5', padding: '10px 16px', borderRadius: '10px', color: '#065F46', fontWeight: 600, border: '1px solid #A7F3D0' }}>
+                      <CheckCircle size={18} />
+                      Already Published
+                    </div>
                   )}
                 </div>
               </div>
 
-              <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                <table className="data-table" style={{ margin: 0 }}>
-                  <thead>
+              <div style={{ maxHeight: '550px', overflowY: 'auto' }}>
+                <table className="data-table" style={{ margin: 0, width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                     <tr>
-                      <th>Roll #</th>
-                      <th>Student Name</th>
-                      <th>Father Name</th>
-                      <th>Status</th>
-                      <th>Fine (Rs)</th>
+                      <th style={{ padding: '14px 24px', textAlign: 'left', color: '#475569', fontWeight: 600, borderBottom: '1px solid #E2E8F0' }}>Roll #</th>
+                      <th style={{ padding: '14px 24px', textAlign: 'left', color: '#475569', fontWeight: 600, borderBottom: '1px solid #E2E8F0' }}>Student Profile</th>
+                      <th style={{ padding: '14px 24px', textAlign: 'left', color: '#475569', fontWeight: 600, borderBottom: '1px solid #E2E8F0' }}>Status</th>
+                      <th style={{ padding: '14px 24px', textAlign: 'left', color: '#475569', fontWeight: 600, borderBottom: '1px solid #E2E8F0' }}>Fine (Rs)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {editedRecords.map((r: any) => (
-                      <tr key={r.student_id}>
-                        <td>{r.roll_number || r.student_id.split('-')[0]}</td>
-                        <td style={{ fontWeight: 500 }}>{r.student_name || 'N/A'}</td>
-                        <td style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>{r.father_name || 'N/A'}</td>
-                        <td>
-                          <span className={`badge ${r.status === 'Present' ? 'badge-success' : r.status === 'Absent' ? 'badge-error' : 'badge-warning'}`}>
+                      <tr key={r.student_id} className="table-row-hover" style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.2s ease' }}>
+                        <td style={{ padding: '14px 24px', color: '#64748B', fontWeight: 500 }}>{r.roll_number || r.student_id.split('-')[0]}</td>
+                        <td style={{ padding: '14px 24px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 600, color: '#1E293B', fontSize: '14.5px' }}>{r.student_name || 'N/A'}</span>
+                            <span style={{ color: '#94A3B8', fontSize: '13px' }}>{r.father_name || 'N/A'}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px 24px' }}>
+                          <span className={`badge ${r.status === 'Present' ? 'badge-success' : r.status === 'Absent' ? 'badge-error' : 'badge-warning'}`} style={{ padding: '6px 12px', borderRadius: '12px', fontWeight: 600, fontSize: '12.5px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                             {r.status}
                           </span>
                         </td>
-                        <td>
+                        <td style={{ padding: '14px 24px' }}>
                           {r.status === 'Absent' ? (
-                            <input 
-                              type="number" 
-                              className="input-field" 
-                              style={{ width: '100px', margin: 0 }}
-                              value={r.fine || 0}
-                              onChange={e => handleFineChange(r.student_id, e.target.value)}
-                              disabled={selectedRecord.status === 'Published'}
-                            />
+                            <div className="input-group" style={{ margin: 0, width: '110px' }}>
+                              <span style={{ padding: '8px', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRight: 'none', borderRadius: '6px 0 0 6px', color: '#64748B', fontWeight: 600 }}>Rs</span>
+                              <input 
+                                type="number" 
+                                className="input-field" 
+                                style={{ margin: 0, borderRadius: '0 6px 6px 0', border: '1px solid #E2E8F0', padding: '8px 12px', transition: 'border-color 0.2s ease, box-shadow 0.2s ease' }}
+                                value={r.fine || 0}
+                                onChange={e => handleFineChange(r.student_id, e.target.value)}
+                                disabled={selectedRecord.status === 'Published'}
+                              />
+                            </div>
                           ) : (
-                            <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                            <span style={{ color: '#CBD5E1', fontWeight: 500, paddingLeft: '16px' }}>—</span>
                           )}
                         </td>
                       </tr>
@@ -523,10 +707,14 @@ export const AdminAttendanceApproval: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="card empty-state" style={{ height: '100%', minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <Calendar size={48} color="var(--color-border)" style={{ marginBottom: '16px' }} />
-              <h3>Select an Attendance Record</h3>
-              <p style={{ color: 'var(--color-text-secondary)' }}>Click on a submitted record to review, apply absentee fines, and publish.</p>
+            <div className="empty-state card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', border: '2px dashed #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ background: '#E0E7FF', padding: '24px', borderRadius: '50%', marginBottom: '20px', color: '#4F46E5', boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.1)' }}>
+                <CheckCircle size={48} />
+              </div>
+              <h3 style={{ margin: '0 0 8px 0', color: '#1E293B', fontSize: '20px' }}>Select an Attendance Record</h3>
+              <p style={{ margin: 0, color: '#64748B', maxWidth: '300px', textAlign: 'center', lineHeight: '1.5' }}>
+                Click on any submitted class from the left panel to review and publish attendance.
+              </p>
             </div>
           )}
         </div>

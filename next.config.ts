@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+});
 
 const nextConfig: NextConfig = {
   // ─── Performance: reduce dev compile & hot-reload time ────────────────────
@@ -12,6 +16,9 @@ const nextConfig: NextConfig = {
       'recharts',
     ],
   },
+  
+  // Required to suppress Turbopack warnings when using next-pwa (which uses webpack)
+  turbopack: {},
 
   // ─── Compiler: strip console.log in production ───────────────────────────
   compiler: {
@@ -19,6 +26,9 @@ const nextConfig: NextConfig = {
       ? { exclude: ['error', 'warn'] }
       : false,
   },
+
+  // ─── Dev Server: allow local network access ──────────────────────────────
+  allowedDevOrigins: ['192.168.100.11', 'localhost'],
 
   // ─── Images: allow Supabase storage origin ───────────────────────────────
   images: {
@@ -79,4 +89,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

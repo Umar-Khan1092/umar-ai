@@ -23,14 +23,11 @@ export const GuardianHome: React.FC = () => {
     setSendingAdminRemark(true);
     try {
       await supabase.from('notifications').insert({
-        recipient_id: 'admin',
-        recipient_role: 'Admin',
         target_role: 'Admin',
-        sender_id: activeStudent.id,
         sender_role: 'Guardian',
         title: `Message from Parent of ${activeStudent.name}`,
         message: adminRemark,
-        context: 'Remarks',
+        category: 'Remarks',
         student_id: activeStudent.id
       });
       
@@ -111,10 +108,10 @@ export const GuardianHome: React.FC = () => {
   }, [activeStudent]);
 
   const quickActions = [
-    { id: 'attendance', label: 'Attendance', icon: CheckSquare, color: '#16A34A', bg: '#F0FDF4', path: '/guardian/academics' },
-    { id: 'results', label: 'Results', icon: FileSpreadsheet, color: '#7C3AED', bg: '#F3E8FF', path: '/guardian/academics' },
-    { id: 'fees', label: 'Fees', icon: Banknote, color: '#E11D48', bg: '#FFE4E6', path: '/guardian/fees' },
-    { id: 'timetable', label: 'Timetable', icon: Calendar, color: '#2563EB', bg: '#EFF6FF', path: '/guardian/academics' }
+    { id: 'attendance', label: 'Attendance (حاضری)', icon: CheckSquare, color: '#16A34A', bg: '#F0FDF4', path: '/guardian/guardianacademics?tab=attendance' },
+    { id: 'results', label: 'Marks (نمبر)', icon: FileSpreadsheet, color: '#7C3AED', bg: '#F3E8FF', path: '/guardian/guardianacademics?tab=results' },
+    { id: 'fees', label: 'Fees (فیس)', icon: Banknote, color: '#E11D48', bg: '#FFE4E6', path: '/guardian/guardianfees' },
+    { id: 'timetable', label: 'Timetable (ٹائم ٹیبل)', icon: Calendar, color: '#2563EB', bg: '#EFF6FF', path: '/guardian/guardianacademics?tab=timetable' }
   ];
 
   // Siblings = all students linked to the same guardian except the active one

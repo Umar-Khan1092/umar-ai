@@ -21,6 +21,12 @@ export const TeacherProfile: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'profile' | 'attendance' | 'report'>('dashboard');
   const [dailyReportText, setDailyReportText] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
+  const [reportDraftSaved, setReportDraftSaved] = useState(false);
+  const [selfAttendanceStatus, setSelfAttendanceStatus] = useState<'Present' | 'Absent' | 'Leave' | null>(null);
+  const [selfAttendanceSaving, setSelfAttendanceSaving] = useState(false);
+  const [selfAttendanceSaved, setSelfAttendanceSaved] = useState(false);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [selectedModalStatus, setSelectedModalStatus] = useState<'Present' | 'Absent' | 'Leave' | null>(null);
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
   const [filterMode, setFilterMode] = useState<'single' | 'range'>('single');
   const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getMonth());
@@ -64,6 +70,13 @@ export const TeacherProfile: React.FC = () => {
               .order('date', { ascending: false });
             if (!attRes.error && attRes.data) {
               setAttendanceHistory(attRes.data);
+              // Check if already marked today
+              const today = new Date().toISOString().split('T')[0];
+              const todayRecord = attRes.data.find((r: any) => r.date === today);
+              if (todayRecord) {
+                setSelfAttendanceStatus(todayRecord.status as any);
+                setSelectedModalStatus(todayRecord.status as any);
+              }
             }
           }
         } catch (err: any) {
@@ -90,12 +103,61 @@ export const TeacherProfile: React.FC = () => {
       });
       if (error) throw error;
       setDailyReportText('');
+      setReportDraftSaved(false);
+      localStorage.removeItem(`teacher_report_draft_${staff?.id}`);
       setView('dashboard');
       alert('Daily report submitted successfully!');
     } catch (err: any) {
       alert('Failed to submit report: ' + err.message);
     } finally {
       setSubmittingReport(false);
+    }
+  };
+
+  const saveDraft = () => {
+    if (!dailyReportText.trim()) return;
+    localStorage.setItem(`teacher_report_draft_${staff?.id}`, dailyReportText.trim());
+    setReportDraftSaved(true);
+    setTimeout(() => setReportDraftSaved(false), 2000);
+  };
+
+  const handleOpenReport = () => {
+    const saved = localStorage.getItem(`teacher_report_draft_${staff?.id}`);
+    if (saved && !dailyReportText) setDailyReportText(saved);
+    setView('report');
+  };
+
+  const markSelfAttendance = async (status: 'Present' | 'Absent' | 'Leave') => {
+    if (!staff?.id) return;
+    setSelfAttendanceSaving(true);
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      // Upsert today's record (delete+insert)
+      await supabase.from('staff_attendance').delete().eq('staff_id', staff.id).eq('date', today);
+      const { error } = await supabase.from('staff_attendance').insert({
+        staff_id: staff.id,
+        date: today,
+        status: selectedModalStatus,
+        marked_by_teacher: true
+      });
+      if (error && !error.message.includes('column')) {
+        // If marked_by_teacher column doesn't exist yet, insert without it
+        await supabase.from('staff_attendance').delete().eq('staff_id', staff.id).eq('date', today);
+        await supabase.from('staff_attendance').insert({ staff_id: staff.id, date: today, status: selectedModalStatus });
+      }
+      setSelfAttendanceStatus(selectedModalStatus);
+      setSelfAttendanceSaved(true);
+      setTimeout(() => {
+        setSelfAttendanceSaved(false);
+        setShowAttendanceModal(false);
+      }, 1500);
+      // Refresh attendance history
+      const attRes = await supabase.from('staff_attendance').select('*').eq('staff_id', staff.id).order('date', { ascending: false });
+      if (attRes.data) setAttendanceHistory(attRes.data);
+    } catch (err: any) {
+      alert('Failed: ' + err.message);
+    } finally {
+      setSelfAttendanceSaving(false);
     }
   };
 
@@ -111,17 +173,34 @@ export const TeacherProfile: React.FC = () => {
     return (
       <div className="teacher-page" style={{ paddingBottom: '24px' }}>
         {/* Welcome Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--tp-primary-light, #DBEAFE)', color: 'var(--tp-primary, #2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700 }}>
-            {staff.name.charAt(0)}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>Hi, {staff.name.split(' ')[0]} 👋</h2>
-              <NotificationButton />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--tp-primary-light, #DBEAFE)', color: 'var(--tp-primary, #2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700, flexShrink: 0 }}>
+              {staff.name.charAt(0)}
             </div>
-            <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748B' }}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>Hi, {staff.name.split(' ')[0]} 👋</h2>
+                <NotificationButton />
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748B' }}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+            </div>
           </div>
+          
+          <button 
+            onClick={handleOpenReport}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '6px', 
+              padding: '10px 16px', borderRadius: '12px', 
+              backgroundColor: '#FEF3C7', color: '#D97706', 
+              border: '1px solid #FDE68A', cursor: 'pointer',
+              fontWeight: 600, fontSize: '14px',
+              boxShadow: '0 2px 8px rgba(217, 119, 6, 0.1)',
+              transition: 'all 0.2s', flexShrink: 0
+            }}
+          >
+            <CheckSquare size={18} /> Daily Report
+          </button>
         </div>
 
         {/* Quick Stats Grid */}
@@ -174,7 +253,7 @@ export const TeacherProfile: React.FC = () => {
           </div>
 
           <div 
-            onClick={() => setView('attendance')}
+            onClick={() => setShowAttendanceModal(true)}
             style={{ backgroundColor: '#FFFFFF', borderRadius: 'var(--tp-radius-md, 16px)', padding: '16px', boxShadow: 'var(--tp-shadow-soft, 0 4px 12px rgba(0,0,0,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '12px' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -182,11 +261,9 @@ export const TeacherProfile: React.FC = () => {
                 <CheckSquare size={20} />
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>My Attendance</h4>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>Mark Your Attendance</h4>
                 <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>
-                  {attendanceHistory.length > 0 
-                    ? `${Math.round((attendanceHistory.filter(a => a.status === 'Present').length / attendanceHistory.length) * 100)}% Attendance Log`
-                    : 'View attendance log'}
+                  {selfAttendanceStatus ? `Today: ${selfAttendanceStatus}` : 'Tap to mark today\'s attendance'}
                 </p>
               </div>
             </div>
@@ -225,209 +302,51 @@ export const TeacherProfile: React.FC = () => {
             <ChevronRight size={20} color="#94A3B8" />
           </div>
         </div>
-      </div>
-    );
-  }
 
-  if (view === 'attendance') {
-    // Dynamic real-time filtering based on selected month/year or range
-    const filteredAttendance = attendanceHistory.filter(record => {
-      if (!record.date) return false;
-      const [yr, mn] = record.date.split('-');
-      const recordYear = parseInt(yr);
-      const recordMonth = parseInt(mn) - 1; // 0-indexed
-
-      if (filterMode === 'single') {
-        return recordYear === selectedYear && recordMonth === selectedMonth;
-      } else {
-        const recordSortKey = recordYear * 12 + recordMonth;
-        const fromSortKey = fromYear * 12 + fromMonth;
-        const toSortKey = toYear * 12 + toMonth;
-        return recordSortKey >= fromSortKey && recordSortKey <= toSortKey;
-      }
-    });
-
-    const total = filteredAttendance.length;
-    const presents = filteredAttendance.filter(a => a.status === 'Present').length;
-    const leaves = filteredAttendance.filter(a => a.status === 'Leave').length;
-    const absents = filteredAttendance.filter(a => a.status === 'Absent').length;
-    const percentage = total > 0 ? Math.round((presents / total) * 100) : 100;
-
-    return (
-      <div className="teacher-page" style={{ backgroundColor: '#FFFFFF', minHeight: '100%', paddingBottom: '24px' }}>
-        <button 
-          onClick={() => setView('dashboard')}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0, marginBottom: '16px', fontWeight: 500 }}
-        >
-          <ChevronLeft size={20} /> Back to Dashboard
-        </button>
-
-        {/* Dynamic Month/Year Selector Calendar Panel */}
-        <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', padding: '16px', border: '1px solid #E2E8F0', marginBottom: '20px' }}>
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            📅 Filter Attendance Period
-          </h4>
-          
-          {/* Mode Selector Pill Buttons */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <button
-              onClick={() => setFilterMode('single')}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: filterMode === 'single' ? 'var(--tp-primary, #2563EB)' : '#EFF6FF',
-                color: filterMode === 'single' ? '#FFFFFF' : '#2563EB',
-                fontWeight: 600,
-                fontSize: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Single Month
-            </button>
-            <button
-              onClick={() => setFilterMode('range')}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: filterMode === 'range' ? 'var(--tp-primary, #2563EB)' : '#EFF6FF',
-                color: filterMode === 'range' ? '#FFFFFF' : '#2563EB',
-                fontWeight: 600,
-                fontSize: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Date Range
-            </button>
-          </div>
-
-          {/* Conditional Input Selectors */}
-          {filterMode === 'single' ? (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontWeight: 500, fontSize: '13px', outline: 'none' }}
-              >
-                {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, idx) => (
-                  <option key={m} value={idx}>{m}</option>
-                ))}
-              </select>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontWeight: 500, fontSize: '13px', outline: 'none' }}
-              >
-                {[2024, 2025, 2026, 2027].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', width: '45px' }}>From:</span>
-                <select
-                  value={fromMonth}
-                  onChange={(e) => setFromMonth(parseInt(e.target.value))}
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '13px' }}
-                >
-                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, idx) => (
-                    <option key={m} value={idx}>{m}</option>
-                  ))}
-                </select>
-                <select
-                  value={fromYear}
-                  onChange={(e) => setFromYear(parseInt(e.target.value))}
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '13px' }}
-                >
-                  {[2024, 2025, 2026, 2027].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+        {/* Interactive Attendance Modal */}
+        {showAttendanceModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 700, color: '#1E293B', textAlign: 'center' }}>Mark Your Attendance</h3>
+              <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#64748B', textAlign: 'center' }}>{new Date().toLocaleDateString('en-PK', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+              
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+                {(['Present', 'Absent', 'Leave'] as const).map((s) => {
+                  const isActive = selectedModalStatus === s;
+                  const colors: Record<string, [string, string, string]> = { Present: ['#16A34A', '#DCFCE7', '#166534'], Absent: ['#DC2626', '#FEE2E2', '#991B1B'], Leave: ['#D97706', '#FEF3C7', '#92400E'] };
+                  const [borderColor, bgLight, textDark] = colors[s];
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setSelectedModalStatus(s)}
+                      style={{ flex: 1, padding: '16px 8px', borderRadius: '16px', border: `2px solid ${isActive ? borderColor : '#E2E8F0'}`, backgroundColor: isActive ? bgLight : '#FFFFFF', color: isActive ? textDark : '#475569', fontWeight: 700, fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
+                    >
+                      <span style={{ fontSize: '24px' }}>{s === 'Present' ? '✅' : s === 'Absent' ? '❌' : '🟡'}</span>
+                      <span style={{ fontSize: '14px' }}>{s}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', width: '45px' }}>To:</span>
-                <select
-                  value={toMonth}
-                  onChange={(e) => setToMonth(parseInt(e.target.value))}
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '13px' }}
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button 
+                  onClick={() => setShowAttendanceModal(false)}
+                  style={{ flex: 1, padding: '14px', borderRadius: '12px', border: 'none', backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600, fontSize: '15px', cursor: 'pointer' }}
                 >
-                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, idx) => (
-                    <option key={m} value={idx}>{m}</option>
-                  ))}
-                </select>
-                <select
-                  value={toYear}
-                  onChange={(e) => setToYear(parseInt(e.target.value))}
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', color: '#1E293B', fontSize: '13px' }}
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => selectedModalStatus && markSelfAttendance(selectedModalStatus as any)}
+                  disabled={!selectedModalStatus || selfAttendanceSaving}
+                  style={{ flex: 2, padding: '14px', borderRadius: '12px', border: 'none', backgroundColor: !selectedModalStatus ? '#CBD5E1' : '#2563EB', color: '#FFFFFF', fontWeight: 600, fontSize: '15px', cursor: !selectedModalStatus || selfAttendanceSaving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  {[2024, 2025, 2026, 2027].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+                  {selfAttendanceSaving ? <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#FFF', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : 'Submit'}
+                </button>
               </div>
+              {selfAttendanceSaved && <p style={{ margin: '12px 0 0 0', textAlign: 'center', color: '#16A34A', fontSize: '14px', fontWeight: 600 }}>Attendance marked successfully!</p>}
             </div>
-          )}
-        </div>
-
-        <h3 style={{ margin: '0 0 20px 0', fontSize: '17px', fontWeight: 600, color: 'var(--tp-primary, #2563EB)' }}>My Attendance Summary</h3>
-
-        {/* Stats Summary Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-          <div style={{ backgroundColor: '#F0FDF4', borderRadius: '16px', padding: '16px', border: '1px solid #DCFCE7', textAlign: 'center' }}>
-            <h4 style={{ margin: 0, fontSize: '13px', color: '#16A34A' }}>Presents</h4>
-            <span style={{ fontSize: '24px', fontWeight: 700, color: '#166534' }}>{presents}</span>
           </div>
-          <div style={{ backgroundColor: '#FEF2F2', borderRadius: '16px', padding: '16px', border: '1px solid #FEE2E2', textAlign: 'center' }}>
-            <h4 style={{ margin: 0, fontSize: '13px', color: '#DC2626' }}>Absents</h4>
-            <span style={{ fontSize: '24px', fontWeight: 700, color: '#991B1B' }}>{absents}</span>
-          </div>
-          <div style={{ backgroundColor: '#FFFBEB', borderRadius: '16px', padding: '16px', border: '1px solid #FEF3C7', textAlign: 'center' }}>
-            <h4 style={{ margin: 0, fontSize: '13px', color: '#D97706' }}>Leaves</h4>
-            <span style={{ fontSize: '24px', fontWeight: 700, color: '#92400E' }}>{leaves}</span>
-          </div>
-          <div style={{ backgroundColor: '#EFF6FF', borderRadius: '16px', padding: '16px', border: '1px solid #DBEAFE', textAlign: 'center' }}>
-            <h4 style={{ margin: 0, fontSize: '13px', color: '#2563EB' }}>Rate</h4>
-            <span style={{ fontSize: '24px', fontWeight: 700, color: '#1D4ED8' }}>{percentage}%</span>
-          </div>
-        </div>
-
-        {/* Attendance List */}
-        <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>Recent Logs</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {filteredAttendance.length > 0 ? filteredAttendance.map((record) => {
-            const isPresent = record.status === 'Present';
-            const isLeave = record.status === 'Leave';
-            const badgeColor = isPresent ? '#22C55E' : isLeave ? '#F59E0B' : '#EF4444';
-            const badgeBg = isPresent ? '#DCFCE7' : isLeave ? '#FEF3C7' : '#FEE2E2';
-
-            return (
-              <div 
-                key={record.id}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}
-              >
-                <div>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B' }}>
-                    {new Date(record.date).toLocaleDateString('en-PK', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
-                  </span>
-                </div>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: badgeColor, backgroundColor: badgeBg, padding: '4px 10px', borderRadius: '100px' }}>
-                  {record.status}
-                </span>
-              </div>
-            );
-          }) : (
-            <div style={{ padding: '24px', textAlign: 'center', color: '#64748B', border: '1px dashed #CBD5E1', borderRadius: '12px' }}>
-              No attendance logs found.
-            </div>
-          )}
-        </div>
+        )}
       </div>
     );
   }
@@ -475,28 +394,37 @@ export const TeacherProfile: React.FC = () => {
               }}
             />
             
-            <button
-              onClick={submitDailyReport}
-              disabled={submittingReport || !dailyReportText.trim()}
-              style={{
-                marginTop: '16px',
-                width: '100%',
-                padding: '14px',
-                borderRadius: '12px',
-                backgroundColor: (submittingReport || !dailyReportText.trim()) ? '#93C5FD' : '#2563EB',
-                color: '#FFFFFF',
-                border: 'none',
-                fontWeight: 600,
-                fontSize: '15px',
-                cursor: (submittingReport || !dailyReportText.trim()) ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                transition: 'background-color 0.2s'
-              }}
-            >
-              {submittingReport ? 'Submitting...' : 'Submit Report'}
-            </button>
+            <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
+              <button
+                onClick={saveDraft}
+                disabled={!dailyReportText.trim()}
+                style={{
+                  flex: 1, padding: '14px', borderRadius: '12px',
+                  backgroundColor: reportDraftSaved ? '#DCFCE7' : '#F1F5F9',
+                  color: reportDraftSaved ? '#16A34A' : '#475569',
+                  border: 'none', fontWeight: 600, fontSize: '15px',
+                  cursor: !dailyReportText.trim() ? 'not-allowed' : 'pointer',
+                  opacity: !dailyReportText.trim() ? 0.6 : 1, transition: 'all 0.2s'
+                }}
+              >
+                {reportDraftSaved ? '✓ Saved!' : 'Save as Draft'}
+              </button>
+              <button
+                onClick={submitDailyReport}
+                disabled={submittingReport || !dailyReportText.trim()}
+                style={{
+                  flex: 2, padding: '14px', borderRadius: '12px',
+                  backgroundColor: (submittingReport || !dailyReportText.trim()) ? '#93C5FD' : '#2563EB',
+                  color: '#FFFFFF', border: 'none', fontWeight: 600, fontSize: '15px',
+                  cursor: (submittingReport || !dailyReportText.trim()) ? 'not-allowed' : 'pointer',
+                  display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                {submittingReport ? <div style={{ width: '18px', height: '18px', border: '3px solid #FFF', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : null}
+                {submittingReport ? 'Submitting...' : 'Submit Report'}
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>

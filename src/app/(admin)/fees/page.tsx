@@ -8,6 +8,7 @@ import { HighlightText } from '@/components/ui/HighlightText';
 import { formatDate } from '@/utils/formatDate';
 
 import { supabase, adminSupabase } from '@/lib/supabase';
+import { SyncEngine } from '@/lib/syncEngine';
 
 const db = adminSupabase || supabase;
 
@@ -268,11 +269,18 @@ export const FeeManagement: React.FC = () => {
           status: v.status
         };
       });
-      const { error } = await db.from('fee_vouchers').insert(dbVouchers);
-      if (error) throw error;
+      if (navigator.onLine) {
+        const { error } = await db.from('fee_vouchers').insert(dbVouchers);
+        if (error) throw error;
+      } else {
+        // Queue actions for offline
+        for (const data of dbVouchers) {
+          await SyncEngine.queueAction('fee_vouchers', 'INSERT', data);
+        }
+      }
 
       // ── Send Parent Portal Notifications ──
-      if (genNotifyParents) {
+      if (genNotifyParents && navigator.onLine) {
         const notifications = vouchersToInsert.map((v: any) => {
           const s = v._student;
           const breakdown: string[] = [];
@@ -320,7 +328,12 @@ export const FeeManagement: React.FC = () => {
         }
       }
 
-      setGenerateMessage(`✅ Generated ${vouchersToInsert.length} vouchers for ${monthLabel}${ genNotifyParents ? ' + notifications sent to Parent Portals' : ''}.`);
+      if (navigator.onLine) {
+        setGenerateMessage(`Successfully generated vouchers for ${vouchersToInsert.length} students!`);
+        fetchVouchers();
+      } else {
+        setGenerateMessage(`Offline: Queued vouchers for ${vouchersToInsert.length} students. They will sync automatically.`);
+      }
       setIsGenerating(false);
       setTimeout(() => {
         setGenerateMessage('');
@@ -1168,8 +1181,15 @@ export const FeeManagement: React.FC = () => {
                           {totalPaid.toLocaleString()}
                         </div>
                       </td>
-                      <td className="font-semibold" style={{ color: 'var(--color-text-heading)' }}>
-                        {totalPayable.toLocaleString()}
+                      <td>
+                        <div 
+                          style={{ color: totalPayable > 0 ? '#1E3A8A' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600, display: 'inline-block', padding: '6px 12px', borderRadius: '6px', background: totalPayable > 0 ? '#DBEAFE' : '#f1f5f9', border: totalPayable > 0 ? '1px solid #BFDBFE' : '1px solid #e2e8f0', transition: 'all 0.2s', textAlign: 'center', minWidth: '80px' }}
+                          onClick={() => { if (totalPayable > 0) { setSelectedStudentForPayable(student); setShowPayableModal(true); } }}
+                          onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.95)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
+                        >
+                          {totalPayable.toLocaleString()}
+                        </div>
                       </td>
                       <td>
                         {totalRemaining > 0 ? (
@@ -1224,10 +1244,11 @@ export const FeeManagement: React.FC = () => {
             </div>
 
             <div className="records-controls" style={{ padding: '12px 16px', marginBottom: '24px', backgroundColor: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', width: '100%', alignItems: 'center' }}>
-                <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-secondary)', gridColumn: '1 / -1' }}>Filters:</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-secondary)' }}>Filters:</div>
+                <div style={{ display: 'flex', gap: '12px', width: '100%', overflowX: 'auto', paddingBottom: '4px' }}>
                 
-                <div className="filter-group" style={{ position: 'relative', width: '100%' }}>
+                <div className="filter-group" style={{ position: 'relative', flex: '1', minWidth: '140px' }}>
                   <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
                   <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px', width: '100%', textOverflow: 'ellipsis' }}>
                     <option value="">All Classes</option>
@@ -1236,7 +1257,7 @@ export const FeeManagement: React.FC = () => {
                   <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none', top: '50%', transform: 'translateY(-50%)' }} />
                 </div>
                 
-                <div className="filter-group" style={{ position: 'relative', width: '100%' }}>
+                <div className="filter-group" style={{ position: 'relative', flex: '1', minWidth: '140px' }}>
                   <Filter size={16} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
                   <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} className="filter-select" style={{ paddingLeft: '36px', appearance: 'none', paddingRight: '32px', width: '100%', textOverflow: 'ellipsis' }}>
                     <option value="">All Sections</option>
@@ -1245,7 +1266,7 @@ export const FeeManagement: React.FC = () => {
                   <ChevronDown size={16} style={{ position: 'absolute', right: '12px', color: '#94a3b8', pointerEvents: 'none', top: '50%', transform: 'translateY(-50%)' }} />
                 </div>
                 
-                <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center', gridColumn: '1 / -1' }}>
+                <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: '1.5', minWidth: '180px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s', width: '100%' }}>
                     <div 
                       onClick={() => monthInputRef.current?.showPicker()}
@@ -1270,6 +1291,7 @@ export const FeeManagement: React.FC = () => {
                     )}
                   </div>
                   <input ref={monthInputRef} type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} />
+                </div>
                 </div>
               </div>
             </div>

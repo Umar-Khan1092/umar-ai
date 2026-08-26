@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, BookOpen, Users } from 'lucide-react';
+import { Calendar, Clock, BookOpen, Users, Megaphone, Send, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { formatTime } from '@/utils/formatDate';
 import { supabase, adminSupabase } from '@/lib/supabase';
+import { triggerWebPush } from '@/lib/push';
 
 interface TimetableEntry {
   id: string;
@@ -36,6 +37,49 @@ export const TeacherTimetable: React.FC = () => {
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string>('All');
+
+  const [announcementModal, setAnnouncementModal] = useState<{isOpen: boolean, class_name: string, section: string, message: string, isSending: boolean}>({
+    isOpen: false, class_name: '', section: '', message: '', isSending: false
+  });
+
+  const sendAnnouncement = async () => {
+    if (!announcementModal.message.trim()) return;
+    setAnnouncementModal(prev => ({ ...prev, isSending: true }));
+    
+    try {
+      const { data: students } = await supabase.from('students')
+        .select('id')
+        .eq('academic_class', announcementModal.class_name)
+        .eq('section', announcementModal.section);
+        
+      if (students && students.length > 0) {
+        const notifs = students.map(s => ({
+          target_role: 'Guardian',
+          sender_role: 'Teacher',
+          title: `Announcement: Class ${announcementModal.class_name}-${announcementModal.section}`,
+          message: announcementModal.message,
+          category: 'General',
+          student_id: s.id
+        }));
+        
+        await supabase.from('notifications').insert(notifs);
+        
+        triggerWebPush({
+          roles: ['Guardian'],
+          title: `Announcement: Class ${announcementModal.class_name}-${announcementModal.section}`,
+          message: announcementModal.message,
+          url: '/guardian/guardianhome',
+          category: 'General'
+        });
+      }
+      
+      alert('Announcement sent successfully!');
+      setAnnouncementModal({ isOpen: false, class_name: '', section: '', message: '', isSending: false });
+    } catch (err: any) {
+      alert('Failed to send announcement: ' + err.message);
+      setAnnouncementModal(prev => ({ ...prev, isSending: false }));
+    }
+  };
 
   useEffect(() => {
     let subscription: any = null;
@@ -158,8 +202,16 @@ export const TeacherTimetable: React.FC = () => {
                       </h3>
                       <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748B' }}>{periods.length} period{periods.length !== 1 ? 's' : ''}{selectedDay !== 'All' ? ` on ${selectedDay}` : ' assigned'}</p>
                     </div>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: color.light, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <BookOpen size={16} color={color.text} />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        onClick={() => setAnnouncementModal({ isOpen: true, class_name: cls, section: sec, message: '', isSending: false })}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: `1px solid ${color.text}40`, backgroundColor: color.light, color: color.text, fontWeight: 600, fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
+                      >
+                        <Megaphone size={14} /> Announce
+                      </button>
+                      <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: color.light, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <BookOpen size={16} color={color.text} />
+                      </div>
                     </div>
                   </div>
                   <div style={{ overflowX: 'auto' }}>
@@ -202,6 +254,36 @@ export const TeacherTimetable: React.FC = () => {
             })}
           </div>
         </>
+      )}
+
+      {/* Announcement Modal */}
+      {announcementModal.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div style={{ width: '100%', maxWidth: '400px', padding: '24px', position: 'relative', backgroundColor: '#FFFFFF', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+            <button onClick={() => setAnnouncementModal(prev => ({ ...prev, isOpen: false }))} style={{ position: 'absolute', top: '20px', right: '20px', background: '#F8FAFC', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', color: '#64748B' }}>
+              <X size={18} />
+            </button>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: '#1E293B' }}>Global Announcement</h2>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#64748B' }}>
+              To all parents of <strong style={{ color: '#1E293B' }}>Class {announcementModal.class_name}-{announcementModal.section}</strong>
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Message</label>
+              <textarea 
+                style={{ width: '100%', minHeight: '120px', resize: 'vertical', padding: '12px', borderRadius: '12px', border: '1px solid #CBD5E1', outline: 'none', fontSize: '14px', color: '#1E293B', backgroundColor: '#F8FAFC' }}
+                placeholder="Type your announcement (e.g., 'Math test tomorrow at 9 AM')..."
+                value={announcementModal.message}
+                onChange={(e) => setAnnouncementModal(prev => ({ ...prev, message: e.target.value }))}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button onClick={() => setAnnouncementModal(prev => ({ ...prev, isOpen: false }))} disabled={announcementModal.isSending} style={{ padding: '10px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, backgroundColor: 'transparent', color: '#64748B', border: 'none', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={sendAnnouncement} disabled={!announcementModal.message.trim() || announcementModal.isSending} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, backgroundColor: (!announcementModal.message.trim() || announcementModal.isSending) ? '#94A3B8' : '#2563EB', color: '#FFFFFF', border: 'none', cursor: (!announcementModal.message.trim() || announcementModal.isSending) ? 'not-allowed' : 'pointer', boxShadow: (!announcementModal.message.trim() || announcementModal.isSending) ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.2)' }}>
+                <Send size={16} /> {announcementModal.isSending ? 'Sending...' : 'Announce'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

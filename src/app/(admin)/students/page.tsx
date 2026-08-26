@@ -20,6 +20,8 @@ export const StudentRecords: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams?.get('q') || '';
+  const urlClass = searchParams?.get('class');
+  const urlSection = searchParams?.get('section');
   
   const [students, setStudents] = useState<any[]>([]);
   const [classGroups, setClassGroups] = useState<ClassGroup[]>([]);
@@ -96,6 +98,14 @@ export const StudentRecords: React.FC = () => {
       if (res.data?.value) setSettingsClasses(res.data.value.classes || []);
     }).catch(err => console.error(err));
   }, []);
+
+  // Auto-select class group if URL params are present
+  useEffect(() => {
+    if (classGroups.length > 0 && urlClass && urlSection && !selectedClassGroup) {
+      const match = classGroups.find(g => g.className === urlClass && g.section === urlSection);
+      if (match) setSelectedClassGroup(match);
+    }
+  }, [classGroups, urlClass, urlSection, selectedClassGroup]);
 
   // Filter groups
   useEffect(() => {
@@ -201,7 +211,7 @@ export const StudentRecords: React.FC = () => {
       
       {/* ── CLASS GROUPS VIEW ── */}
       {!selectedClassGroup && (
-        <div className="student-classes-page fill-vertical-space" style={{ padding: '0 0 24px 0' }}>
+        <div className="student-classes-page fill-vertical-space" style={{ padding: '0 0 24px 0', overflowY: 'auto' }}>
           <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <h2 style={{ fontSize: '1.5rem', color: 'var(--color-text-main)', margin: '0 0 8px 0' }}>Classes & Sections</h2>
@@ -253,7 +263,7 @@ export const StudentRecords: React.FC = () => {
                 <div style={{ position: 'absolute', top: '-15px', right: '-15px', color: '#f1f5f9', zIndex: 0 }}>
                   <GraduationCap size={100} />
                 </div>
-                <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ position: 'relative', zIndex: 1, textAlign: 'left' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
                     <div className="class-icon" style={{ backgroundColor: '#eff6ff', color: '#3b82f6', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Users size={24} />

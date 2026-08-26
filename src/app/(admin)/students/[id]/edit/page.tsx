@@ -113,13 +113,13 @@ export const EditStudent: React.FC = () => {
         const availableSections = classSectionsMap[value] || [];
         updated.section = availableSections.length > 0 ? availableSections[0] : '';
         if (fees) {
-          updated.monthly_fee = fees.monthly || '';
+          updated.monthly_fee = fees.monthly ? String(fees.monthly) : '';
           // Only update transport/academy if they were already using it or if it's set in the old profile
           if (Number(prev.transport_fee) > 0 && fees.transport) {
-            updated.transport_fee = fees.transport;
+            updated.transport_fee = String(fees.transport);
           }
           if (Number(prev.academy_fee) > 0 && fees.academy) {
-            updated.academy_fee = fees.academy;
+            updated.academy_fee = String(fees.academy);
           }
         }
       }

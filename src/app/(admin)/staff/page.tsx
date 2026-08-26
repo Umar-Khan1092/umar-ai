@@ -119,56 +119,57 @@ export const StaffRecords: React.FC = () => {
 
   return (
     <div className="records-page fill-vertical-space">
-      <div className="records-controls">
-        <div className="search-box">
-          <Search size={18} className="search-icon" />
-          <div className="search-divider"></div>
+      <div className="records-controls filters-bar" style={{ padding: '12px 0', marginBottom: '16px', display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div className="search-box" style={{ flex: '1 1 auto', minWidth: '0' }}>
+          <Search size={16} className="search-icon" style={{ flexShrink: 0 }} />
+          <div className="search-divider" style={{ flexShrink: 0 }}></div>
           <input 
             type="text" 
-            placeholder="Search students, staff, classes..." 
+            placeholder="Search students, staff..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
+            style={{ minWidth: '0' }}
           />
         </div>
         
-        <div className="filters">
-          <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setIsBulkUploadOpen(true)}>
-            <UploadCloud size={16} /> Import CSV
-          </button>
-          
-          <div className="filter-group">
-            <Filter size={16} className="filter-icon" />
-            <select 
-              value={salaryTypeFilter} 
-              onChange={(e) => setSalaryTypeFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="">All Salary Types</option>
-              <option value="Fixed">Fixed</option>
-              <option value="Per Lecture">Per Lecture</option>
-            </select>
-          </div>
-          
-          <div className="filter-group">
-            <Filter size={16} className="filter-icon" />
-            <select 
-              value={roleFilter} 
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="">All Roles</option>
-              <option value="Teacher">Teacher</option>
-              <option value="Admin">Admin</option>
-              <option value="Principal">Principal</option>
-              <option value="Accountant">Accountant</option>
-              <option value="Clerk">Clerk</option>
-              <option value="Peon">Peon</option>
-              <option value="Guard">Guard</option>
-              <option value="Sweeper">Sweeper</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
+        <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, padding: '8px 12px', fontSize: '13px' }} onClick={() => setIsBulkUploadOpen(true)}>
+          <UploadCloud size={14} /> <span className="hide-on-mobile">Import CSV</span>
+        </button>
+        
+        <div className="filter-group" style={{ flex: '1 1 auto', minWidth: '0' }}>
+          <Filter size={14} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '8px' }} />
+          <select 
+            value={salaryTypeFilter} 
+            onChange={(e) => setSalaryTypeFilter(e.target.value)}
+            className="filter-select"
+            style={{ paddingLeft: '28px', appearance: 'none', paddingRight: '20px', width: '100%', minWidth: '0', textOverflow: 'ellipsis' }}
+          >
+            <option value="">All Salary Types</option>
+            <option value="Fixed">Fixed</option>
+            <option value="Per Lecture">Per Lecture</option>
+          </select>
+        </div>
+        
+        <div className="filter-group" style={{ flex: '1 1 auto', minWidth: '0' }}>
+          <Filter size={14} className="filter-icon" style={{ color: '#3b82f6', position: 'absolute', left: '8px' }} />
+          <select 
+            value={roleFilter} 
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="filter-select"
+            style={{ paddingLeft: '28px', appearance: 'none', paddingRight: '20px', width: '100%', minWidth: '0', textOverflow: 'ellipsis' }}
+          >
+            <option value="">All Roles</option>
+            <option value="Teacher">Teacher</option>
+            <option value="Admin">Admin</option>
+            <option value="Principal">Principal</option>
+            <option value="Accountant">Accountant</option>
+            <option value="Clerk">Clerk</option>
+            <option value="Peon">Peon</option>
+            <option value="Guard">Guard</option>
+            <option value="Sweeper">Sweeper</option>
+            <option value="Other">Other</option>
+          </select>
         </div>
       </div>
 

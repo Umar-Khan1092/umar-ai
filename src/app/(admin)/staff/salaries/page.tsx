@@ -150,45 +150,57 @@ export const StaffSalaries: React.FC = () => {
       </div>
 
       <div className="receive-card">
-          <div className="records-controls" style={{ padding: '0 0 var(--space-4) 0', borderBottom: 'none' }}>
-            <div className="search-box">
-              <Search size={18} className="search-icon" />
-              <div className="search-divider"></div>
+          <div className="records-controls filters-bar" style={{ padding: '0 0 var(--space-4) 0', borderBottom: 'none', display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div className="search-box" style={{ flex: '1 1 auto', minWidth: '0' }}>
+              <Search size={16} className="search-icon" style={{ flexShrink: 0 }} />
+              <div className="search-divider" style={{ flexShrink: 0 }}></div>
               <input 
                 type="text" 
-                placeholder="Search students, staff, classes..." 
+                placeholder="Search students, staff..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="search-input"
+                style={{ minWidth: '0' }}
               />
             </div>
             
-            <div className="filters">
-               <div className="filter-group">
-                 <input 
-                   type="month" 
-                   className="filter-select"
-                   value={monthFilter}
-                   onChange={e => setMonthFilter(e.target.value)}
-                 />
-               </div>
-               <div className="filter-group">
-                 <select className="filter-select" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-                   <option value="">All Roles</option>
-                   <option value="Teacher">Teacher</option>
-                   <option value="Admin">Admin</option>
-                   <option value="Accountant">Accountant</option>
-                   <option value="Janitor">Janitor</option>
-                   <option value="Guard">Guard</option>
-                 </select>
-               </div>
-               <div className="filter-group">
-                 <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                   <option value="">All Statuses</option>
-                   <option value="Paid">Paid</option>
-                   <option value="Pending">Pending</option>
-                 </select>
-               </div>
+            <div className="filter-group" style={{ flex: '1 1 auto', minWidth: '0' }}>
+              <input 
+                type="month" 
+                className="filter-select"
+                value={monthFilter}
+                onChange={e => setMonthFilter(e.target.value)}
+                style={{ minWidth: '0' }}
+              />
+            </div>
+            
+            <div className="filter-group" style={{ flex: '1 1 auto', minWidth: '0' }}>
+              <select 
+                className="filter-select" 
+                value={roleFilter} 
+                onChange={e => setRoleFilter(e.target.value)}
+                style={{ minWidth: '0', textOverflow: 'ellipsis' }}
+              >
+                <option value="">All Roles</option>
+                <option value="Teacher">Teacher</option>
+                <option value="Admin">Admin</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Janitor">Janitor</option>
+                <option value="Guard">Guard</option>
+              </select>
+            </div>
+            
+            <div className="filter-group" style={{ flex: '1 1 auto', minWidth: '0' }}>
+              <select 
+                className="filter-select" 
+                value={statusFilter} 
+                onChange={e => setStatusFilter(e.target.value)}
+                style={{ minWidth: '0', textOverflow: 'ellipsis' }}
+              >
+                <option value="">All Statuses</option>
+                <option value="Paid">Paid</option>
+                <option value="Pending">Pending</option>
+              </select>
             </div>
           </div>
 

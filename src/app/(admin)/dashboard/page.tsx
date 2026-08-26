@@ -4,12 +4,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminSupabase, supabase } from '@/lib/supabase';
 import { NotificationButton } from '@/components/NotificationButton';
+import { AcademicInsights } from './AcademicInsights';
+import { LayoutDashboard, LineChart } from 'lucide-react';
 
 
 const db = adminSupabase || supabase;
 
 export const Dashboard: React.FC = () => {
   const router = useRouter();
+  const [dashboardTab, setDashboardTab] = useState<'Overview' | 'Insights'>('Overview');
 
   // KPI state
   const [activeStudents, setActiveStudents] = useState<number | null>(null);
@@ -213,8 +216,7 @@ export const Dashboard: React.FC = () => {
       const { error } = await db.from('notifications').insert({
         title: messageTitle,
         message: messageContent,
-        target_role: messageRole === 'All' ? null : messageRole,
-        is_read: false
+        target_role: messageRole === 'All' ? null : messageRole
       });
       if (error) throw error;
       
@@ -251,15 +253,39 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="dashboard">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             Dashboard
             <NotificationButton />
           </h1>
+          <p className="subtitle">Overview and insights of school operations.</p>
         </div>
       </div>
 
+      <div className="profile-tabs-container card profile-tabs-card" style={{ marginBottom: '24px' }}>
+        <nav className="profile-nav-horizontal" style={{ borderBottom: 'none', padding: '0 16px' }}>
+          <button 
+            className={`profile-tab-horizontal ${dashboardTab === 'Overview' ? 'active' : ''}`}
+            onClick={() => setDashboardTab('Overview')}
+          >
+            <LayoutDashboard size={16} />
+            <span>Overview</span>
+          </button>
+          <button 
+            className={`profile-tab-horizontal ${dashboardTab === 'Insights' ? 'active' : ''}`}
+            onClick={() => setDashboardTab('Insights')}
+          >
+            <LineChart size={16} />
+            <span>Academic Insights</span>
+          </button>
+        </nav>
+      </div>
+
+      {dashboardTab === 'Insights' ? (
+        <AcademicInsights />
+      ) : (
+        <>
       {/* ── Primary KPI Grid ── */}
       <div className="kpi-grid">
         <div
@@ -346,7 +372,7 @@ export const Dashboard: React.FC = () => {
               >
                 <option value="All">All</option>
                 <option value="Fee">Fee</option>
-                <option value="Teacher Reports">Teacher Reports</option>
+                <option value="Teacher Progress">Teacher Progress</option>
                 <option value="Notices">Notices</option>
               </select>
               <input 
@@ -361,7 +387,7 @@ export const Dashboard: React.FC = () => {
             const filteredActivities = adminActivities.filter(act => {
               if (activityFilter === 'All') return true;
               if (activityFilter === 'Fee' && act.activity_type?.includes('Fee')) return true;
-              if (activityFilter === 'Teacher Reports' && act.activity_type?.includes('Report')) return true;
+              if (activityFilter === 'Teacher Progress' && act.activity_type?.includes('Report')) return true;
               if (activityFilter === 'Notices' && act.activity_type?.includes('Notice')) return true;
               return false;
             });
@@ -471,7 +497,8 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
         </div>
-
+        </>
+      )}
 
       <style>{`
         @keyframes pulse {

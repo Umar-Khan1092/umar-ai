@@ -26,15 +26,13 @@ export const RemarkModal: React.FC<RemarkModalProps> = ({ isOpen, onClose, stude
     if (!remark.trim()) return;
     setIsSending(true);
     setStatus({type: null, message: ''});
-
     try {
       const { error } = await supabase.from('notifications').insert({
-        recipient_id: 'parent_' + studentId,
-        recipient_role: 'Guardian',
-        sender_id: user?.id || '',
+        target_role: 'Guardian',
         sender_role: 'Teacher',
+        title: `New Remark from Teacher (${subject || context})`,
         message: remark,
-        context: context,
+        category: context,
         student_id: studentId,
         subject: subject
       });
@@ -92,10 +90,19 @@ export const RemarkModal: React.FC<RemarkModalProps> = ({ isOpen, onClose, stude
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
           <button onClick={onClose} disabled={isSending} style={{ padding: '10px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, backgroundColor: 'transparent', color: '#64748B', border: 'none', cursor: 'pointer' }}>Cancel</button>
           <button onClick={handleSend} disabled={!remark.trim() || isSending} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, backgroundColor: (!remark.trim() || isSending) ? '#94A3B8' : 'var(--tp-primary, #2563EB)', color: '#FFFFFF', border: 'none', cursor: (!remark.trim() || isSending) ? 'not-allowed' : 'pointer', boxShadow: (!remark.trim() || isSending) ? 'none' : 'var(--tp-shadow-soft)' }}>
-            <Send size={16} /> {isSending ? 'Sending...' : 'Send'}
+            {isSending ? (
+              <div style={{ width: '16px', height: '16px', border: '2px solid #FFF', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            ) : <Send size={16} />}
+            {isSending ? 'Sending...' : 'Send'}
           </button>
         </div>
       </div>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

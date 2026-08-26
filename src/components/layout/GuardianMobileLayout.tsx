@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Home, BookOpen, Banknote, Bell, User, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useGuardian } from '@/context/GuardianContext';
 import { NotificationButton } from '@/components/NotificationButton';
@@ -11,6 +11,7 @@ import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname() ?? '';
+  const searchParams = useSearchParams();
   const { students, activeStudent, setActiveStudentId, isLoading } = useGuardian();
   const [showSwitcher, setShowSwitcher] = useState(false);
   const { unreadCount } = useUnreadNotifications();
@@ -47,11 +48,11 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
   }
 
   const navItems = [
-    { id: 'home', icon: Home, label: 'Home', path: '/guardian/guardianhome', altPath: '/guardian/home' },
-    { id: 'academics', icon: BookOpen, label: 'Academics', path: '/guardian/guardianacademics' },
-    { id: 'fees', icon: Banknote, label: 'Fees', path: '/guardian/guardianfees' },
-    { id: 'notifications', icon: Bell, label: 'Notices', path: '/guardian/guardiannotifications' },
-    { id: 'profile', icon: User, label: 'Profile', path: '/guardian/guardianprofile' }
+    { id: 'home', icon: Home, label: 'Home (ہوم)', path: '/guardian/guardianhome', altPath: '/guardian/home' },
+    { id: 'attendance', icon: CheckCircle2, label: 'Attendance (حاضری)', path: '/guardian/guardianacademics?tab=attendance' },
+    { id: 'academics', icon: BookOpen, label: 'Marks (نمبر)', path: '/guardian/guardianacademics?tab=results' },
+    { id: 'fees', icon: Banknote, label: 'Fees (فیس)', path: '/guardian/guardianfees' },
+    { id: 'notifications', icon: Bell, label: 'Notices (نوٹس)', path: '/guardian/guardiannotifications' }
   ];
 
   return (
@@ -100,7 +101,9 @@ export const GuardianMobileLayout = ({ children }: { children: React.ReactNode }
       {/* Bottom Navigation */}
       <div className="guardian-bottom-nav">
         {navItems.map(item => {
-          const isActive = pathname.startsWith(item.path) || (item.altPath && pathname.startsWith(item.altPath));
+          const tabMatch = item.path.includes('?tab=') ? searchParams.get('tab') === item.path.split('?tab=')[1] : true;
+          const pathMatch = pathname === item.path.split('?')[0] || (item.altPath && pathname.startsWith(item.altPath));
+          const isActive = pathMatch && tabMatch;
           const Icon = item.icon;
           return (
             <Link 

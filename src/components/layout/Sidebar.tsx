@@ -25,9 +25,9 @@ interface SidebarProps {
 const adminNavItems: NavItem[] = [
   { name: 'Dashboard',          icon: Home,          path: '/dashboard',     color: '#2563EB' },
   { name: 'Student Management', icon: Users,          path: '/students',      color: '#7C3AED' },
+  { name: 'Attendance',         icon: Calendar,      path: '/attendance',    color: '#16A34A' },
   { name: 'Fee Management',     icon: CreditCard,    path: '/fees', color: '#059669' },
   { name: 'Staff',              icon: Briefcase,     path: '/staff',         color: '#F59E0B' },
-  { name: 'Attendance',         icon: Calendar,      path: '/attendance',    color: '#16A34A' },
   { name: 'Timetable',          icon: Calendar,      path: '/timetable',     color: '#9333EA' },
   { name: 'Expense Management', icon: Receipt,       path: '/finance/expenses', color: '#F97316' },
   { name: 'Finance',            icon: BarChart3,     path: '/finance', color: '#14B8A6' },

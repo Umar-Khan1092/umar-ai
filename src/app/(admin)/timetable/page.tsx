@@ -724,55 +724,6 @@ export const AdminTimetable: React.FC = () => {
               </div>
             </div>
           
-          {/* Weekly Grid Preview */}
-          <div className="card admin-split-right" style={{ maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px', position: 'sticky', top: 0, backgroundColor: 'var(--color-surface)', zIndex: 10, paddingBottom: '8px' }}>
-              <Calendar size={18} color="var(--color-primary)" /> Preview: {selectedClasses[0] || 'Class'} - {selectedSections[0] || 'Section'}
-            </h3>
-            
-            {selectedClasses.length > 1 || selectedSections.length > 1 ? (
-               <div style={{ background: '#EFF6FF', padding: '12px', borderRadius: '8px', color: '#1D4ED8', fontSize: '13px', marginBottom: '16px' }}>
-                 Showing preview for the first selected class/section only. All selected combinations will be scheduled.
-               </div>
-            ) : null}
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {DAYS.map(day => {
-                const dayPeriods = timetable.filter(t => t.day === day).sort((a, b) => a.start_time.localeCompare(b.start_time));
-                
-                return (
-                  <div key={day} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: '#F8FAFC', padding: '12px 16px', fontWeight: 'bold', borderBottom: dayPeriods.length > 0 ? '1px solid var(--color-border)' : 'none' }}>
-                      {day}
-                    </div>
-                    {dayPeriods.length > 0 && (
-                      <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {dayPeriods.map(period => (
-                          <div key={period.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'white', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                              <div style={{ fontWeight: 'bold', color: 'var(--color-primary)', width: '120px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Clock size={14} /> {formatTime(period.start_time)} - {formatTime(period.end_time)}
-                              </div>
-                              <div style={{ fontWeight: '500', width: '150px' }}>{period.subject}</div>
-                              <div style={{ color: 'var(--color-text-muted)' }}>{period.teacher_name}</div>
-                            </div>
-                            <button className="icon-btn danger" onClick={() => handleDelete(period.id!)}>
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {dayPeriods.length === 0 && (
-                      <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-                        No periods scheduled.
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
           </div>
         </>
       ) : (

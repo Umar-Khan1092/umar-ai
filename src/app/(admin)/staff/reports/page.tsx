@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Filter, Calendar, FileText, CheckCircle, Clock, AlertCircle, X } from 'lucide-react';
 import { supabase, adminSupabase } from '@/lib/supabase';
  // Reuse table/card styles
@@ -18,6 +18,7 @@ export const StaffReports: React.FC = () => {
 
   const [roleFilter, setRoleFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState(getCurrentMonth());
+  const monthInputRef = useRef<HTMLInputElement>(null);
   
   const [activeTab, setActiveTab] = useState<'pending' | 'paid'>('pending');
 
@@ -180,14 +181,36 @@ export const StaffReports: React.FC = () => {
             </select>
           </div>
 
-          <div className="filter-group" style={{ flex: '1 1 0%', minWidth: 0 }}>
-            <Calendar size={16} className="filter-icon" style={{ marginRight: '8px', color: '#64748b', flexShrink: 0 }} />
+          <div className="filter-group" style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: '1.5', minWidth: '180px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: monthFilter ? '#eff6ff' : '#f8fafc', border: monthFilter ? '1px solid #bfdbfe' : '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', transition: 'all 0.2s', width: '100%' }}>
+              <div 
+                onClick={() => monthInputRef.current?.showPicker()}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', 
+                  padding: '8px 12px',
+                  color: monthFilter ? '#1e40af' : '#475569', fontWeight: 600, fontSize: '13px',
+                  cursor: 'pointer', flex: 1
+                }}
+              >
+                <Calendar size={16} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{monthFilter ? new Date(parseInt(monthFilter.split('-')[0]), parseInt(monthFilter.split('-')[1]) - 1).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Overall (All Months)'}</span>
+              </div>
+              {monthFilter && (
+                <div 
+                  onClick={(e) => { e.stopPropagation(); setMonthFilter(''); }}
+                  style={{ padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', borderLeft: '1px solid #bfdbfe', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)' }}
+                  title="Switch to Overall"
+                >
+                  <X size={14} />
+                </div>
+              )}
+            </div>
             <input 
-              type="month"
+              ref={monthInputRef} 
+              type="month" 
               value={monthFilter} 
-              onChange={(e) => setMonthFilter(e.target.value)}
-              className="filter-select"
-              style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', paddingRight: '0' }}
+              onChange={(e) => setMonthFilter(e.target.value)} 
+              style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} 
             />
           </div>
           
@@ -263,7 +286,7 @@ export const StaffReports: React.FC = () => {
             ) : (
               displaySlips.map((slip, idx) => (
                 <tr key={slip.id || idx}>
-                  <td><span className="fw-medium">{slip.month}</span></td>
+                  <td><span className="fw-medium">{formatMonthName(slip.month)}</span></td>
                   <td><span className="fw-medium">{slip.staff_name}</span></td>
                   <td>
                     <span className={`status-badge ${slip.role === 'Admin' ? 'active' : 'inactive'}`} style={{ background: slip.role === 'Teacher' ? '#e0f2fe' : slip.role === 'Admin' ? '#fce7f3' : '#f1f5f9', color: slip.role === 'Teacher' ? '#0369a1' : slip.role === 'Admin' ? '#be185d' : '#475569' }}>

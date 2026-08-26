@@ -20,9 +20,17 @@ export const StudentProfile: React.FC = () => {
   const [student, setStudent] = useState<any>(null);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
+  const [exams, setExams] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
   const [balance, setBalance] = useState<number>(0);
   const [notifications, setNotifications] = useState<any[]>([]);
+  // Results tab filter state
+  const [resExamTypeFilter, setResExamTypeFilter] = useState<string>('All');
+  const [resSubjectFilter, setResSubjectFilter] = useState<string>('All');
+  const [resDateFilterType, setResDateFilterType] = useState<'Overall'|'Month'|'Custom'>('Overall');
+  const [resFilterMonth, setResFilterMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+  const [resFilterStart, setResFilterStart] = useState<string>('');
+  const [resFilterEnd, setResFilterEnd] = useState<string>('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,8 +48,11 @@ export const StudentProfile: React.FC = () => {
             setBalance(totalBilled - totalPaid);
           }
 
-          const { data: resData } = await dbClient.from('results').select('*').eq('student_id', id);
+          const { data: resData } = await dbClient.from('results').select('*, exams(id, title, type, created_at)').eq('student_id', id).order('created_at', { ascending: false });
           if (resData) setResults(resData);
+          
+          // exams no longer fetched separately — joined above
+          setExams([]);
 
           const { data: attData } = await dbClient.from('attendance')
             .select('*')
@@ -303,6 +314,12 @@ export const StudentProfile: React.FC = () => {
             {balance > 0 && <span className="badge warning">Remainings: ₨ {balance.toLocaleString()}</span>}
             {balance < 0 && <span className="badge success">Advance Credit: ₨ {Math.abs(balance).toLocaleString()}</span>}
             {balance === 0 && <span className="badge success">Balance Cleared</span>}
+            <span className="badge" style={{backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE'}}>
+              Portal Username: {student.email || student.guardian_email || 'N/A'}
+            </span>
+            <span className="badge" style={{backgroundColor: '#FAF5FF', color: '#7E22CE', border: '1px solid #E9D5FF'}}>
+              Portal Password: {student.guardian_password || 'N/A'}
+            </span>
           </div>
         </div>
       </div>
@@ -494,51 +511,208 @@ export const StudentProfile: React.FC = () => {
             )}
           </div>
         )}
-        {activeTab === 'results' && (
-          <div className="tab-pane">
-            <h2 className="section-heading">Academic Results</h2>
-            {results.length > 0 ? (
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Exam Term</th>
-                      <th>Subject</th>
-                      <th>Total Marks</th>
-                      <th>Obtained Marks</th>
-                      <th>Percentage</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((res: any, idx: number) => {
-                      const pct = res.total_marks > 0 ? ((res.obtained_marks / res.total_marks) * 100) : 0;
-                      const isPass = pct >= 40;
-                      return (
-                        <tr key={idx}>
-                          <td>{res.exam_term}</td>
-                          <td style={{ fontWeight: 500 }}>{res.subject}</td>
-                          <td>{res.total_marks}</td>
-                          <td style={{ fontWeight: 600 }}>{res.obtained_marks}</td>
-                          <td>{pct.toFixed(1)}%</td>
-                          <td>
-                            <span className={`badge ${isPass ? 'badge-success' : 'badge-error'}`}>
-                              {isPass ? 'Pass' : 'Fail'}
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+        {activeTab === 'results' && (() => {
+          // Helper: grade
+          const calcGrade = (pct: number) => {
+            if (pct >= 94) return 'A+';
+            if (pct >= 85) return 'A';
+            if (pct >= 75) return 'B';
+            if (pct >= 65) return 'C';
+            if (pct >= 50) return 'D';
+            return 'F';
+          };
+
+          // Filter
+          const filtered = results.filter(r => {
+            const matchType = resExamTypeFilter === 'All' || r.exams?.type === resExamTypeFilter;
+            const matchSubj = resSubjectFilter === 'All' || r.subject === resSubjectFilter;
+            const matchDate = () => {
+              if (resDateFilterType === 'Overall') return true;
+              const d = new Date(r.exams?.created_at || r.created_at || 0);
+              if (resDateFilterType === 'Month' && resFilterMonth) {
+                const [y, m] = resFilterMonth.split('-');
+                return d.getFullYear() === parseInt(y) && (d.getMonth() + 1) === parseInt(m);
+              }
+              if (resDateFilterType === 'Custom') {
+                if (resFilterStart && d < new Date(resFilterStart + 'T00:00:00')) return false;
+                if (resFilterEnd && d > new Date(resFilterEnd + 'T23:59:59')) return false;
+                return true;
+              }
+              return true;
+            };
+            return matchType && matchSubj && matchDate();
+          });
+
+          // Group by exam type
+          const grouped: Record<string, { examType: string; results: any[] }> = {};
+          filtered.forEach(r => {
+            const etype = r.exams?.type || 'Other';
+            if (!grouped[etype]) grouped[etype] = { examType: etype, results: [] };
+            grouped[etype].results.push(r);
+          });
+          // Sort groups: latest exam first
+          const groups = Object.values(grouped).sort((a, b) => {
+            const la = Math.max(...a.results.map(r => new Date(r.exams?.created_at || 0).getTime()));
+            const lb = Math.max(...b.results.map(r => new Date(r.exams?.created_at || 0).getTime()));
+            return lb - la;
+          });
+
+          const allTypes = Array.from(new Set(results.filter(r => r.exams).map(r => r.exams?.type))).filter(Boolean) as string[];
+          const allSubjects = Array.from(new Set(results.map(r => r.subject))).filter(Boolean) as string[];
+
+          return (
+            <div className="tab-pane">
+              <h2 className="section-heading">Academic Results</h2>
+
+              {/* Filters */}
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Exam Type</label>
+                  <select value={resExamTypeFilter} onChange={e => setResExamTypeFilter(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '14px' }}>
+                    <option value="All">All Exams</option>
+                    {allTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Subject</label>
+                  <select value={resSubjectFilter} onChange={e => setResSubjectFilter(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '14px' }}>
+                    <option value="All">All Subjects</option>
+                    {allSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Date Filter</label>
+                  <select value={resDateFilterType} onChange={e => setResDateFilterType(e.target.value as any)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '14px' }}>
+                    <option value="Overall">Overall</option>
+                    <option value="Month">By Month</option>
+                    <option value="Custom">Custom Range</option>
+                  </select>
+                </div>
+                {resDateFilterType === 'Month' && (
+                  <div style={{ flex: '1 1 140px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Month</label>
+                    <input type="month" value={resFilterMonth} onChange={e => setResFilterMonth(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '14px' }} />
+                  </div>
+                )}
+                {resDateFilterType === 'Custom' && (
+                  <>
+                    <div style={{ flex: '1 1 140px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Start Date</label>
+                      <input type="date" value={resFilterStart} onChange={e => setResFilterStart(e.target.value)}
+                        style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '14px' }} />
+                    </div>
+                    <div style={{ flex: '1 1 140px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>End Date</label>
+                      <input type="date" value={resFilterEnd} onChange={e => setResFilterEnd(e.target.value)}
+                        style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '14px' }} />
+                    </div>
+                  </>
+                )}
               </div>
-            ) : (
-              <div className="empty-state-placeholder">
-                <p className="body-text">No published exam results available for this student.</p>
-              </div>
-            )}
-          </div>
-        )}
+
+              {/* Result Cards */}
+              {groups.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {groups.map((group, idx) => {
+                    const totalMarks = group.results.reduce((s, r) => s + (r.total_marks || 0), 0);
+                    const obtained = group.results.reduce((s, r) => s + (r.marks || 0), 0);
+                    const pct = totalMarks > 0 ? Math.round((obtained / totalMarks) * 100) : 0;
+                    const grade = calcGrade(pct);
+                    const gradeBg = grade === 'F' ? '#FEE2E2' : grade === 'D' ? '#FEF3C7' : '#DCFCE7';
+                    const gradeColor = grade === 'F' ? '#DC2626' : grade === 'D' ? '#D97706' : '#15803D';
+                    const gradeLabelColor = grade === 'F' ? '#991B1B' : grade === 'D' ? '#92400E' : '#166534';
+
+                    // Sort within group: newest date first, then by subject
+                    const sortedRows = [...group.results].sort((a, b) => {
+                      const da = new Date(a.exams?.created_at || 0).getTime();
+                      const db = new Date(b.exams?.created_at || 0).getTime();
+                      return db !== da ? db - da : (a.subject || '').localeCompare(b.subject || '');
+                    });
+
+                    return (
+                      <div key={idx} style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                        {/* Card Header */}
+                        <div style={{ background: 'var(--color-background)', padding: '16px', borderBottom: '1px solid var(--color-border)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                            <div>
+                              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--color-text)' }}>{group.examType}</h3>
+                              <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                                {group.results.length} result{group.results.length !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                            <div style={{ textAlign: 'right', fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{student?.name}</div>
+                              <div>S/O {student?.father_name}</div>
+                              <div>Class {student?.academic_class} — Sec {student?.section}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Subject Table */}
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <thead>
+                              <tr style={{ background: 'var(--color-background)', fontSize: '13px', color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>
+                                <th style={{ padding: '10px 16px', fontWeight: 600 }}>Subject</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 600 }}>Date</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 600, textAlign: 'center' }}>Total</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 600, textAlign: 'center' }}>Obtained</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 600, textAlign: 'center' }}>%</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 600, textAlign: 'center' }}>Grade</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sortedRows.map((r, i) => {
+                                const sp = r.total_marks > 0 ? Math.round((r.marks / r.total_marks) * 100) : 0;
+                                const sg = calcGrade(sp);
+                                const examDate = r.exams?.created_at
+                                  ? new Date(r.exams.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                                  : '—';
+                                return (
+                                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border)', fontSize: '14px' }}>
+                                    <td style={{ padding: '11px 16px', fontWeight: 500, color: 'var(--color-text)' }}>{r.subject}</td>
+                                    <td style={{ padding: '11px 16px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{examDate}</td>
+                                    <td style={{ padding: '11px 16px', color: 'var(--color-text-muted)', textAlign: 'center' }}>{r.total_marks}</td>
+                                    <td style={{ padding: '11px 16px', fontWeight: 600, color: 'var(--color-text)', textAlign: 'center' }}>{r.marks}</td>
+                                    <td style={{ padding: '11px 16px', fontWeight: 600, color: sp >= 50 ? '#16A34A' : '#DC2626', textAlign: 'center' }}>{sp}%</td>
+                                    <td style={{ padding: '11px 16px', textAlign: 'center' }}>
+                                      <span style={{ padding: '2px 10px', borderRadius: '100px', fontSize: '12px', fontWeight: 700, background: sg === 'F' ? '#FEE2E2' : sg === 'D' ? '#FEF3C7' : '#DCFCE7', color: sg === 'F' ? '#DC2626' : sg === 'D' ? '#D97706' : '#15803D' }}>{sg}</span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Footer Summary */}
+                        <div style={{ background: 'var(--color-background)', padding: '14px 16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                          <div style={{ display: 'flex', gap: '24px' }}>
+                            <div><span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block' }}>Total Marks</span><span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-text)' }}>{totalMarks}</span></div>
+                            <div><span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block' }}>Obtained</span><span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-primary)' }}>{obtained}</span></div>
+                            <div><span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block' }}>Percentage</span><span style={{ fontSize: '16px', fontWeight: 700, color: pct >= 50 ? '#16A34A' : '#DC2626' }}>{pct}%</span></div>
+                          </div>
+                          <div style={{ background: gradeBg, padding: '6px 20px', borderRadius: '100px', textAlign: 'center' }}>
+                            <span style={{ fontSize: '11px', color: gradeLabelColor, fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>Overall Grade</span>
+                            <span style={{ fontSize: '20px', fontWeight: 800, color: gradeColor }}>{grade}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="empty-state-placeholder">
+                  <p className="body-text">{results.length === 0 ? 'No published exam results available for this student.' : 'No results match the selected filters.'}</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
         {activeTab === 'attendance' && (
           <div className="tab-pane">
             <h2 className="section-heading">Attendance Record</h2>

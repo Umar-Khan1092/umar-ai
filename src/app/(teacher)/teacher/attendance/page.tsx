@@ -6,7 +6,8 @@ import { Calendar, CheckCircle2, XCircle, Clock, AlertTriangle, ChevronLeft, Sea
 import { motion, AnimatePresence } from 'framer-motion';
 import { RemarkModal } from '@/components/RemarkModal';
 import { supabase, adminSupabase } from '@/lib/supabase';
-
+import { localDb } from '@/lib/db';
+import { SyncEngine } from '@/lib/syncEngine';
 
 export const TakeAttendance: React.FC = () => {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ export const TakeAttendance: React.FC = () => {
   const [statusMsg, setStatusMsg] = useState<{type: 'success'|'error'|null, message: string}>({type: null, message: ''});
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [remarkStudent, setRemarkStudent] = useState<{id: string, name: string} | null>(null);
+  const [teacherStaffId, setTeacherStaffId] = useState<string>('');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Submitted' | 'Pending'>('All');
@@ -53,11 +55,11 @@ export const TakeAttendance: React.FC = () => {
   const computeStats = (duty: any) => {
     let total = 0, present = 0, absent = 0, leave = 0;
     
-    const attRecord = globalAttendances.find(a => a.date === selectedDate && a.class_name === duty.class_name && a.section === duty.section && (duty.subject ? a.subject === duty.subject : !a.subject));
+    const classRecords = globalAttendances.filter(a => a.date === selectedDate && a.academic_class === duty.class_name && a.section === duty.section);
     
-    if (attRecord && attRecord.records) {
-      total = attRecord.records.length;
-      attRecord.records.forEach((r: any) => {
+    if (classRecords.length > 0) {
+      total = classRecords.length;
+      classRecords.forEach((r: any) => {
         if (r.status === 'Present') present++;
         if (r.status === 'Absent') absent++;
         if (r.status === 'Leave') leave++;
@@ -82,6 +84,7 @@ export const TakeAttendance: React.FC = () => {
           // Look up staff record by email (case-insensitive)
           const staffRes = await dbClient.from('staff').select('id').ilike('username', user.email ?? '').limit(1).maybeSingle();
           const staffId = staffRes.data?.id || user.id;
+          setTeacherStaffId(staffId);
           
           console.log('Teacher Staff ID:', staffId);
           
@@ -128,24 +131,54 @@ export const TakeAttendance: React.FC = () => {
       setIsLoading(true);
       
       const fetchAtt = async () => {
-        const { data: stdData } = await supabase.from('students').select('*')
-          .eq('academic_class', selectedClass)
-          .eq('section', selectedSection)
-          .neq('status', 'Struck Off');
-        if (stdData) setStudents(stdData);
+        let stdData: any[] = [];
+        if (navigator.onLine) {
+          const { data } = await supabase.from('students').select('*')
+            .eq('academic_class', selectedClass)
+            .eq('section', selectedSection)
+            .neq('status', 'Struck Off');
+          if (data) {
+            stdData = data;
+            // Cache locally for offline use
+            await localDb.students.bulkPut(data.map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              roll_number: s.roll_number || s.roll_no || '',
+              academic_class: s.academic_class,
+              section: s.section,
+              photo_url: s.photo_url
+            })));
+          }
+        } else {
+          // Fetch from local IndexedDB if offline
+          stdData = await localDb.students
+            .filter(s => s.academic_class === selectedClass && s.section === selectedSection)
+            .toArray();
+        }
         
-        let query = supabase.from('student_attendance').select('*')
-          .eq('date', selectedDate)
-          .eq('class_name', selectedClass)
-          .eq('section', selectedSection);
+        setStudents(stdData || []);
         
-        if (selectedSubject) query = query.eq('subject', selectedSubject);
-        else query = query.is('subject', null);
-        
-        const { data: attData } = await query.maybeSingle();
-        if (attData) {
-          setAttendanceRecords(attData.records || []);
-          setRecordStatus(attData.status || 'Draft');
+        let attData: any[] = [];
+        if (navigator.onLine) {
+          const query = supabase.from('student_attendance').select('*')
+            .eq('date', selectedDate)
+            .eq('academic_class', selectedClass)
+            .eq('section', selectedSection);
+          const res = await query;
+          attData = res.data || [];
+        } else {
+          // If offline, we won't have historical attendance from the server,
+          // but we can proceed with fresh marks if they haven't submitted yet.
+          attData = [];
+        }
+        if (attData && attData.length > 0) {
+          const mappedRecords = attData.map((row: any) => ({
+            student_id: row.student_id,
+            status: row.status
+          }));
+          setAttendanceRecords(mappedRecords);
+          const isLocked = attData.some((r: any) => r.is_locked);
+          setRecordStatus(isLocked ? 'Submitted' : 'Draft');
         } else {
           const defaultRecords = (stdData || []).map((s: any) => ({
             student_id: s.id,
@@ -211,34 +244,43 @@ export const TakeAttendance: React.FC = () => {
     });
 
     try {
-      const payload = {
+      const insertData = finalRecords.map(r => ({
+        student_id: r.student_id,
         date: selectedDate,
-        class_name: selectedClass,
+        academic_class: selectedClass,
         section: selectedSection,
-        subject: selectedSubject || null,
-        teacher_id: user?.id,
-        records: finalRecords,
-        status: submitToAdmin ? 'Submitted' : 'Draft'
-      };
-      
-      let query = supabase.from('student_attendance').select('id')
-        .eq('date', selectedDate)
-        .eq('class_name', selectedClass)
-        .eq('section', selectedSection);
-      if (selectedSubject) query = query.eq('subject', selectedSubject);
-      else query = query.is('subject', null);
-      
-      const { data: existing } = await query.maybeSingle();
-      
-      if (existing) {
-        const { error } = await supabase.from('student_attendance').update(payload).eq('id', existing.id);
+        status: r.status,
+        teacher_id: teacherStaffId || user?.id,
+        is_locked: submitToAdmin
+      }));
+
+      if (navigator.onLine) {
+        // 1. Delete existing records for this class/section/date
+        await supabase.from('student_attendance')
+          .delete()
+          .eq('date', selectedDate)
+          .eq('academic_class', selectedClass)
+          .eq('section', selectedSection);
+
+        // 2. Insert new records
+        const { error } = await supabase.from('student_attendance').insert(insertData);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('student_attendance').insert(payload);
-        if (error) throw error;
+        // Offline: Queue the delete and insert actions
+        await SyncEngine.queueAction('student_attendance', 'DELETE', {
+          date: selectedDate,
+          academic_class: selectedClass,
+          section: selectedSection
+        });
+        
+        for (const data of insertData) {
+          await SyncEngine.queueAction('student_attendance', 'INSERT', data);
+        }
+        setStatusMsg({type: 'success', message: 'You are offline. Attendance has been saved locally and will sync when internet is restored.'});
       }
 
-      try {
+      if (navigator.onLine) {
+        try {
         const token = (await supabase.auth.getSession()).data.session?.access_token;
         const dateFormatted = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         
@@ -276,6 +318,7 @@ export const TakeAttendance: React.FC = () => {
       setStatusMsg({type: 'success', message: submitToAdmin ? 'Attendance published and parents notified!' : 'Draft saved successfully!'});
       if (submitToAdmin) setRecordStatus('Published');
       setTimeout(() => setStatusMsg({type: null, message: ''}), 3000);
+      }
     } catch(err: any) {
       setStatusMsg({type: 'error', message: err.message});
     } finally {
@@ -292,8 +335,8 @@ export const TakeAttendance: React.FC = () => {
 
   const totalClasses = baseFilteredDuties.length;
   const submittedClassesList = baseFilteredDuties.filter((d: any) => {
-    const res = globalAttendances.find(a => a.date === selectedDate && a.class_name === d.class_name && a.section === d.section && (d.subject ? a.subject === d.subject : !a.subject));
-    return res && res.status !== 'Draft';
+    const classRecords = globalAttendances.filter(a => a.date === selectedDate && a.academic_class === d.class_name && a.section === d.section);
+    return classRecords.length > 0 && classRecords.some(r => r.is_locked);
   });
   const submittedCount = submittedClassesList.length;
   const pendingCount = totalClasses - submittedCount;
@@ -434,13 +477,16 @@ export const TakeAttendance: React.FC = () => {
               <motion.div layout className="teacher-cards-grid" style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr' }}>
                 <AnimatePresence>
                 {filteredDuties.slice().sort((a: any, b: any) => {
-                  const statA = globalAttendances.find(att => att.date === selectedDate && att.class_name === a.class_name && att.section === a.section) ? 1 : 0;
-                  const statB = globalAttendances.find(att => att.date === selectedDate && att.class_name === b.class_name && att.section === b.section) ? 1 : 0;
+                  const statA = globalAttendances.some(att => att.date === selectedDate && att.academic_class === a.class_name && att.section === a.section) ? 1 : 0;
+                  const statB = globalAttendances.some(att => att.date === selectedDate && att.academic_class === b.class_name && att.section === b.section) ? 1 : 0;
                   return statA - statB;
                 }).map((duty: any, idx: number) => {
                   const stats = computeStats(duty);
-                  const attRecord = globalAttendances.find(a => a.date === selectedDate && a.class_name === duty.class_name && a.section === duty.section && (duty.subject ? a.subject === duty.subject : !a.subject));
-                  const currentStatus = attRecord ? attRecord.status : 'Pending';
+                  const classRecords = globalAttendances.filter(a => a.date === selectedDate && a.academic_class === duty.class_name && a.section === duty.section);
+                  let currentStatus = 'Pending';
+                  if (classRecords.length > 0) {
+                    currentStatus = classRecords.some(r => r.is_locked) ? 'Submitted' : 'Draft';
+                  }
                   
                   return (
                   <motion.div 
@@ -548,11 +594,12 @@ export const TakeAttendance: React.FC = () => {
           </div>
 
           {isLoading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="skeleton-box" style={{ height: '48px', width: '100%', borderRadius: '14px' }}></div>
-              <div className="skeleton-box" style={{ height: '100px', width: '100%', borderRadius: '20px' }}></div>
-              <div className="skeleton-box" style={{ height: '100px', width: '100%', borderRadius: '20px' }}></div>
-              <div className="skeleton-box" style={{ height: '100px', width: '100%', borderRadius: '20px' }}></div>
+            <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: '60px', marginTop: '20px', borderRadius: '24px' }}>
+              <div className="dotted-spinner">
+                <div className="dot"></div>
+                <div className="dot"></div>
+                <div className="dot"></div>
+              </div>
             </div>
           ) : students.length > 0 ? (
             <>
@@ -662,8 +709,8 @@ export const TakeAttendance: React.FC = () => {
                   </button>
                 ) : (
                   <button className="premium-btn" onClick={() => handleSave(true)} disabled={isSaving} style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', padding: '10px 8px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, backgroundColor: 'var(--tp-primary, #2563EB)', color: 'white', border: 'none', boxShadow: 'var(--tp-shadow-soft)', whiteSpace: 'nowrap' }}>
-                    <CheckCircle2 size={16} />
-                    Publish & Notify
+                    {isSaving ? <div className="spinner" style={{ width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 size={16} />}
+                    {isSaving ? 'Publishing...' : 'Publish & Notify'}
                   </button>
                 )}
               </div>

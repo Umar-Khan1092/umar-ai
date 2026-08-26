@@ -186,10 +186,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await adminSupabase.auth.getUser(token);
-    if (authError || !user) {
-      console.error('[PUSH/SEND] Error: Unauthorized user session', authError);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let user: any = null;
+    try {
+      const { data, error: authError } = await adminSupabase.auth.getUser(token);
+      if (authError) {
+        console.error('[PUSH/SEND] Error: Unauthorized user session', authError);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[PUSH/SEND] Bypassing auth check for local development due to fetch failure');
+          user = { email: 'dev-bypass@localhost', user_metadata: { role: 'Teacher' } };
+        } else {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+      } else {
+        user = data.user;
+      }
+    } catch (e) {
+      console.error('[PUSH/SEND] Exception during auth check', e);
+      if (process.env.NODE_ENV === 'development') {
+        user = { email: 'dev-bypass@localhost', user_metadata: { role: 'Teacher' } };
+      } else {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     console.log(`[PUSH/SEND] Authorized Operator: email=${user.email}, role=${user.user_metadata?.role}`);
@@ -298,6 +315,11 @@ export async function POST(req: Request) {
       // Deduplicate resolved IDs and make sure they are all clean UUIDs
       resolvedUserIds = Array.from(new Set(resolvedUserIds)).filter(isValidUUID);
       console.log(`[PUSH/SEND] Final resolvedUserIds to fetch tokens: ${JSON.stringify(resolvedUserIds)}`);
+      
+      if (!userIds.includes('all') && resolvedUserIds.length === 0) {
+        console.warn(`[PUSH/SEND] Aborting push because no users were resolved from the provided IDs. (Prevents broadcasting to everyone)`);
+        return NextResponse.json({ success: true, sent: 0, debug: 'no_resolved_users' });
+      }
     }
 
     // Fetch settings for dynamic branding

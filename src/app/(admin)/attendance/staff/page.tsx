@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Save, Calendar, UserCheck, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Save, Calendar, UserCheck, AlertCircle, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { supabase, adminSupabase } from '@/lib/supabase';
 
 
@@ -34,7 +34,8 @@ export const AdminStaffAttendance: React.FC = () => {
           staff_id: staff.id,
           staff_name: staff.name,
           role: staff.role,
-          status: att ? att.status : 'Absent'
+          status: att ? att.status : 'Absent',
+          marked_by_teacher: att ? (att.marked_by_teacher ?? false) : false
         };
       });
       
@@ -176,6 +177,7 @@ export const AdminStaffAttendance: React.FC = () => {
                   <th>#</th>
                   <th>Staff Name</th>
                   <th>Role</th>
+                  <th>Marked By</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -194,6 +196,17 @@ export const AdminStaffAttendance: React.FC = () => {
                       </td>
                       <td><strong>{record.staff_name}</strong></td>
                       <td>{record.role}</td>
+                      <td>
+                        {record.marked_by_teacher ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <CheckCircle2 size={20} color="#16A34A" />
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <XCircle size={20} color="#DC2626" />
+                          </div>
+                        )}
+                      </td>
                       <td>
                         <div className="radio-group" style={{ display: 'flex', gap: '12px', opacity: isFinalized ? 0.6 : 1, pointerEvents: isFinalized ? 'none' : 'auto' }}>
                           <label className={`radio-label ${record.status === 'Present' ? 'active-present' : ''}`}>

@@ -63,11 +63,12 @@ export const StudentRegistration: React.FC = () => {
           if (data.classes?.length > 0 && !formData.academic_class) {
             const firstClass = data.classes[0];
             const firstClassSections = data.class_sections?.[firstClass] || [];
+            const firstFee = data.class_fees?.[firstClass];
             setFormData((prev: any) => ({ 
               ...prev, 
               academic_class: firstClass,
               section: firstClassSections.length > 0 ? firstClassSections[0] : '',
-              monthly_fee: data.class_fees?.[firstClass]?.monthly || ''
+              monthly_fee: firstFee?.monthly != null ? String(firstFee.monthly) : ''
             }));
           }
         }
@@ -91,10 +92,12 @@ export const StudentRegistration: React.FC = () => {
         const dbClient = adminSupabase || supabase;
         let query = dbClient.from('students').select('id, name, academic_class, section, father_name').neq('status', 'Ex-Students');
         
-        if (wa) {
+        if (wa && email) {
+          query = query.eq('guardian_whatsapp', wa).eq('guardian_email', email);
+        } else if (wa) {
           query = query.eq('guardian_whatsapp', wa);
         } else if (email) {
-          query = query.eq('email', email); // Assuming we also want to check email if whatsapp is empty
+          query = query.eq('guardian_email', email);
         } else {
           setSiblings([]);
           setSiblingsLoading(false);
@@ -159,9 +162,9 @@ export const StudentRegistration: React.FC = () => {
         const availableSections = classSectionsMap[value] || [];
         updated.section = availableSections.length > 0 ? availableSections[0] : '';
         if (fees) {
-          updated.monthly_fee = fees.monthly || '';
-          if (useTransport) updated.transport_fee = fees.transport || '';
-          if (useAcademy) updated.academy_fee = fees.academy || '';
+          updated.monthly_fee = fees.monthly ? String(fees.monthly) : '';
+          if (useTransport) updated.transport_fee = fees.transport ? String(fees.transport) : '';
+          if (useAcademy) updated.academy_fee = fees.academy ? String(fees.academy) : '';
         } else {
           updated.monthly_fee = '';
           if (useTransport) updated.transport_fee = '';
@@ -176,7 +179,7 @@ export const StudentRegistration: React.FC = () => {
     const checked = e.target.checked;
     setUseTransport(checked);
     if (checked && formData.academic_class && classFees[formData.academic_class]) {
-      setFormData(prev => ({ ...prev, transport_fee: classFees[formData.academic_class].transport || '' }));
+      setFormData(prev => ({ ...prev, transport_fee: classFees[formData.academic_class].transport ? String(classFees[formData.academic_class].transport) : '' }));
     } else if (!checked) {
       setFormData(prev => ({ ...prev, transport_fee: '' }));
     }
@@ -186,7 +189,7 @@ export const StudentRegistration: React.FC = () => {
     const checked = e.target.checked;
     setUseAcademy(checked);
     if (checked && formData.academic_class && classFees[formData.academic_class]) {
-      setFormData(prev => ({ ...prev, academy_fee: classFees[formData.academic_class].academy || '' }));
+      setFormData(prev => ({ ...prev, academy_fee: classFees[formData.academic_class].academy ? String(classFees[formData.academic_class].academy) : '' }));
     } else if (!checked) {
       setFormData(prev => ({ ...prev, academy_fee: '' }));
     }
@@ -236,6 +239,8 @@ export const StudentRegistration: React.FC = () => {
         status: 'Active',
         transport_required: useTransport,
         academy_required: useAcademy,
+        email: formData.guardian_email,
+        guardian_email: formData.guardian_email
       };
 
       // ── Create Supabase Auth user via server API route ──────────────

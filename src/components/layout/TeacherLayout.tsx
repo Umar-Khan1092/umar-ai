@@ -3,15 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, CheckSquare, FileSpreadsheet, Calendar, LogOut, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, FileSpreadsheet, Calendar, LogOut, MessageSquare, ClipboardEdit } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationButton } from '@/components/NotificationButton';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 const teacherNavItems = [
   { name: 'Home', icon: LayoutDashboard, path: '/teacher/profile' },
-  { name: 'Attendance', icon: CheckSquare, path: '/teacher/attendance' },
-  { name: 'Exams', icon: FileSpreadsheet, path: '/teacher/marks' },
+  { name: 'Students Attendance', icon: CheckSquare, path: '/teacher/attendance' },
+  { name: 'Exams', icon: ClipboardEdit, path: '/teacher/exams' },
   { name: 'Timetable', icon: Calendar, path: '/teacher/timetable' },
   { name: 'Alerts', icon: MessageSquare, path: '/teacher/notifications' }
 ];
@@ -48,8 +48,8 @@ export const TeacherLayout = ({ children }: { children: React.ReactNode }) => {
     title = 'My Timetable';
   } else if (pathname.includes('/teacher/attendance')) {
     title = 'Daily Attendance';
-  } else if (pathname.includes('/teacher/marks')) {
-    title = 'Scheduled Exam';
+  } else if (pathname.includes('/teacher/exams')) {
+    title = 'Exam Schedule';
   } else if (pathname.includes('/teacher/notifications')) {
     title = 'Notifications';
   } else if (pathname.includes('/teacher/profile')) {
